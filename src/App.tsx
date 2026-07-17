@@ -27,12 +27,14 @@ import {
 const GOOGLE_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbw8yWGHJmONTFshN8rqJIhthd_VFvTpRTeV7jPk931Vab6r_lDstn0Pexf2Ea_m3Lwl/exec";
 
-const SURVEY_VERSION = "sebrae-2026-nucleo-comum-customizado-v3";
-const DRAFT_KEY = "sebrae_questionario_2026_draft_v3";
+const SURVEY_VERSION = "sebrae-2026-nucleo-comum-customizado-v4-likert-7";
+const DRAFT_KEY = "sebrae_questionario_2026_draft_v4_likert_7";
 
 type IconComponent = typeof AlertCircle;
 
 type CourseId = "financas" | "pessoas" | "atendimento" | "ia" | "emocional";
+
+type ScaleResponse = 1 | 2 | 3 | 4 | 5 | 6 | 7 | "NA";
 
 type PageKind =
   | "identification"
@@ -56,7 +58,7 @@ interface OptionItem {
 }
 
 interface ScaleOption {
-  value: number;
+  value: ScaleResponse;
   label: string;
   shortLabel: string;
 }
@@ -135,7 +137,7 @@ interface SurveyFormData {
   supportNeeds: string[];
   supportNeedsOther: string;
 
-  responses: Record<string, number>;
+  responses: Record<string, ScaleResponse>;
   reviewConfirmed: boolean;
 }
 
@@ -268,49 +270,15 @@ const toggleArrayValue = (
   return [...current.filter((item) => !exclusiveValues.includes(item)), value];
 };
 
-const AGREEMENT_SCALE: ScaleOption[] = [
+const LIKERT_7_WITH_NA_SCALE: ScaleOption[] = [
   { value: 1, shortLabel: "Discordo totalmente", label: "Discordo totalmente" },
-  { value: 2, shortLabel: "Discordo parcialmente", label: "Discordo parcialmente" },
-  { value: 3, shortLabel: "Neutro", label: "Nem concordo, nem discordo" },
-  { value: 4, shortLabel: "Concordo parcialmente", label: "Concordo parcialmente" },
-  { value: 5, shortLabel: "Concordo totalmente", label: "Concordo totalmente" },
-];
-
-const AGREEMENT_WITH_NA_SCALE: ScaleOption[] = [
-  ...AGREEMENT_SCALE,
-  { value: 6, shortLabel: "Não se aplica", label: "Não se aplica à minha realidade" },
-];
-
-const EXPECTATION_SCALE: ScaleOption[] = [
-  { value: 1, shortLabel: "Muito abaixo", label: "Muito abaixo das expectativas" },
-  { value: 2, shortLabel: "Abaixo", label: "Abaixo das expectativas" },
-  { value: 3, shortLabel: "Parcialmente", label: "Atendeu parcialmente" },
-  { value: 4, shortLabel: "Atendeu", label: "Atendeu às expectativas" },
-  { value: 5, shortLabel: "Superou", label: "Superou as expectativas" },
-];
-
-const PERFORMANCE_SCALE: ScaleOption[] = [
-  { value: 1, shortLabel: "Muito ruim", label: "Muito ruim" },
-  { value: 2, shortLabel: "Ruim", label: "Ruim" },
-  { value: 3, shortLabel: "Regular", label: "Regular" },
-  { value: 4, shortLabel: "Bom", label: "Bom" },
-  { value: 5, shortLabel: "Muito bom", label: "Muito bom" },
-];
-
-const WORKLOAD_SCALE: ScaleOption[] = [
-  { value: 1, shortLabel: "Muito inadequada", label: "Muito inadequada" },
-  { value: 2, shortLabel: "Inadequada", label: "Inadequada" },
-  { value: 3, shortLabel: "Razoável", label: "Razoável" },
-  { value: 4, shortLabel: "Adequada", label: "Adequada" },
-  { value: 5, shortLabel: "Muito adequada", label: "Muito adequada" },
-];
-
-const BEFORE_SCALE: ScaleOption[] = [
-  { value: 1, shortLabel: "Muito ruim", label: "Muito ruim" },
-  { value: 2, shortLabel: "Ruim", label: "Ruim" },
-  { value: 3, shortLabel: "Regular", label: "Regular" },
-  { value: 4, shortLabel: "Boa", label: "Boa" },
-  { value: 5, shortLabel: "Muito boa", label: "Muito boa" },
+  { value: 2, shortLabel: "Discordo moderadamente", label: "Discordo moderadamente" },
+  { value: 3, shortLabel: "Discordo parcialmente", label: "Discordo parcialmente" },
+  { value: 4, shortLabel: "Nem concordo, nem discordo", label: "Nem concordo, nem discordo" },
+  { value: 5, shortLabel: "Concordo parcialmente", label: "Concordo parcialmente" },
+  { value: 6, shortLabel: "Concordo moderadamente", label: "Concordo moderadamente" },
+  { value: 7, shortLabel: "Concordo totalmente", label: "Concordo totalmente" },
+  { value: "NA", shortLabel: "Não se aplica à minha realidade", label: "Não se aplica à minha realidade" },
 ];
 
 const PROFESSIONAL_CATEGORY_OPTIONS: OptionItem[] = [
@@ -678,14 +646,38 @@ function useMunicipalities(uf: string): MunicipalityLookup {
 }
 
 const BEFORE_QUESTIONS: SurveyQuestion[] = [
-  { id: "common.before.planning", text: "Planejamento" },
-  { id: "common.before.financial_control", text: "Controle financeiro" },
-  { id: "common.before.market", text: "Mercado" },
-  { id: "common.before.technology", text: "Uso de tecnologia" },
-  { id: "common.before.processes", text: "Processos" },
-  { id: "common.before.people", text: "Gestão de pessoas" },
-  { id: "common.before.quality", text: "Gestão da qualidade" },
-  { id: "common.before.crisis", text: "Capacidade de enfrentar crises" },
+  {
+    id: "common.before.planning",
+    text: "Antes dos cursos, minha empresa tinha um bom planejamento.",
+  },
+  {
+    id: "common.before.financial_control",
+    text: "Antes dos cursos, minha empresa tinha um bom controle financeiro.",
+  },
+  {
+    id: "common.before.market",
+    text: "Antes dos cursos, minha empresa conhecia bem o mercado em que atuava.",
+  },
+  {
+    id: "common.before.technology",
+    text: "Antes dos cursos, minha empresa usava tecnologia de forma adequada.",
+  },
+  {
+    id: "common.before.processes",
+    text: "Antes dos cursos, os processos da empresa eram bem organizados.",
+  },
+  {
+    id: "common.before.people",
+    text: "Antes dos cursos, a gestão de pessoas da empresa era adequada.",
+  },
+  {
+    id: "common.before.quality",
+    text: "Antes dos cursos, a empresa cuidava bem da qualidade.",
+  },
+  {
+    id: "common.before.crisis",
+    text: "Antes dos cursos, a empresa estava preparada para enfrentar crises.",
+  },
 ];
 
 const APPLICATION_QUESTIONS: SurveyQuestion[] = [
@@ -700,16 +692,16 @@ const APPLICATION_QUESTIONS: SurveyQuestion[] = [
 ];
 
 const RESULT_QUESTIONS: SurveyQuestion[] = [
-  { id: "common.results.sales", text: "Vendas" },
-  { id: "common.results.clients", text: "Número de clientes" },
-  { id: "common.results.revenue", text: "Faturamento" },
-  { id: "common.results.costs", text: "Redução de custos" },
-  { id: "common.results.processes", text: "Processos" },
-  { id: "common.results.innovation", text: "Inovação" },
-  { id: "common.results.quality", text: "Qualidade" },
-  { id: "common.results.services", text: "Serviços prestados" },
-  { id: "common.results.team", text: "Desempenho da equipe" },
-  { id: "common.results.confidence", text: "Confiança no negócio" },
+  { id: "common.results.sales", text: "Depois dos cursos, as vendas da empresa melhoraram." },
+  { id: "common.results.clients", text: "Depois dos cursos, o número de clientes aumentou." },
+  { id: "common.results.revenue", text: "Depois dos cursos, o faturamento da empresa aumentou." },
+  { id: "common.results.costs", text: "Depois dos cursos, a empresa reduziu custos." },
+  { id: "common.results.processes", text: "Depois dos cursos, os processos da empresa melhoraram." },
+  { id: "common.results.innovation", text: "Depois dos cursos, a empresa passou a inovar mais." },
+  { id: "common.results.quality", text: "Depois dos cursos, a qualidade melhorou." },
+  { id: "common.results.services", text: "Depois dos cursos, os serviços prestados melhoraram." },
+  { id: "common.results.team", text: "Depois dos cursos, o desempenho da equipe melhorou." },
+  { id: "common.results.confidence", text: "Depois dos cursos, aumentou minha confiança no negócio." },
 ];
 
 const COURSES: CourseDefinition[] = [
@@ -1095,7 +1087,7 @@ const getMissingItems = (
     if (condition) missing.push({ id, label });
   };
   const requireResponse = (id: string, label: string) =>
-    add(!data.responses[id], id, label);
+    add(!Object.prototype.hasOwnProperty.call(data.responses, id), id, label);
 
   switch (page.kind) {
     case "identification": {
@@ -1601,9 +1593,9 @@ function CheckboxCards({
 interface LikertQuestionProps {
   id: string;
   question: string;
-  value?: number;
+  value?: ScaleResponse;
   scale: ScaleOption[];
-  onChange: (value: number) => void;
+  onChange: (value: ScaleResponse) => void;
   error?: boolean;
   number?: number;
 }
@@ -1617,10 +1609,8 @@ function LikertQuestion({
   error,
   number,
 }: LikertQuestionProps) {
-  const gridClass =
-    scale.length === 6
-      ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
-      : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-5";
+  const scoredOptions = scale.filter((option) => typeof option.value === "number");
+  const notApplicableOptions = scale.filter((option) => typeof option.value !== "number");
 
   return (
     <fieldset
@@ -1637,18 +1627,19 @@ function LikertQuestion({
         ) : null}
         {question}
       </legend>
-      <div className={`mt-4 grid gap-2 ${gridClass}`}>
-        {scale.map((option) => {
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        {scoredOptions.map((option) => {
           const selected = value === option.value;
           return (
             <label
-              key={option.value}
-              className={`flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-left transition focus-within:ring-4 focus-within:ring-blue-100 lg:flex-col lg:justify-center lg:text-center ${
+              key={String(option.value)}
+              className={`flex min-h-14 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition focus-within:ring-4 focus-within:ring-blue-100 lg:min-h-24 lg:flex-col lg:justify-center lg:text-center ${
                 selected
                   ? "border-[#005AA5] bg-[#005AA5] text-white shadow-sm"
                   : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50"
               }`}
-              title={option.label}
+              title={`${option.value} — ${option.label}`}
             >
               <input
                 type="radio"
@@ -1658,9 +1649,10 @@ function LikertQuestion({
                 className="sr-only"
               />
               <span
-                className={`flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-xs font-bold ${
-                  selected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                className={`flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-sm font-black ${
+                  selected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"
                 }`}
+                aria-hidden="true"
               >
                 {option.value}
               </span>
@@ -1669,6 +1661,35 @@ function LikertQuestion({
           );
         })}
       </div>
+
+      {notApplicableOptions.length > 0 ? (
+        <div className="mt-2 grid gap-2">
+          {notApplicableOptions.map((option) => {
+            const selected = value === option.value;
+            return (
+              <label
+                key={String(option.value)}
+                className={`flex min-h-12 cursor-pointer items-center justify-center rounded-xl border px-4 py-3 text-center transition focus-within:ring-4 focus-within:ring-blue-100 ${
+                  selected
+                    ? "border-[#005AA5] bg-[#005AA5] text-white shadow-sm"
+                    : "border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-300 hover:bg-blue-50"
+                }`}
+                title={option.label}
+              >
+                <input
+                  type="radio"
+                  name={id}
+                  checked={selected}
+                  onChange={() => onChange(option.value)}
+                  className="sr-only"
+                />
+                <span className="text-sm font-semibold leading-5">{option.shortLabel}</span>
+              </label>
+            );
+          })}
+        </div>
+      ) : null}
+
       {error ? <FieldError /> : null}
     </fieldset>
   );
@@ -1886,7 +1907,7 @@ export default function App() {
             eyebrow: "Perguntas do curso",
             title: course.title,
             description:
-              "Marque o quanto você concorda. Use “Não se aplica” quando a frase não combinar com sua realidade.",
+              "Para cada frase, escolha uma opção de 1 a 7. Use “Não se aplica à minha realidade” quando necessário.",
             courseId,
           });
         });
@@ -1941,7 +1962,7 @@ export default function App() {
     }));
   };
 
-  const updateResponse = (id: string, value: number) => {
+  const updateResponse = (id: string, value: ScaleResponse) => {
     setFormData((previous) => ({
       ...previous,
       responses: { ...previous.responses, [id]: value },
@@ -2060,6 +2081,12 @@ export default function App() {
       const legacyCourses = normalizedOnlineCourses.map((courseId) =>
         courseId === "outro" ? "outros" : courseId,
       );
+      const activeResponseLabels = Object.fromEntries(
+        Object.entries(activeResponses).map(([id, response]) => [
+          id,
+          LIKERT_7_WITH_NA_SCALE.find((option) => option.value === response)?.label ?? String(response),
+        ]),
+      );
 
       const payload = {
         ...formData,
@@ -2100,6 +2127,16 @@ export default function App() {
         supportNeeds: hasCourse ? formData.supportNeeds : [],
         supportNeedsOther: hasCourse ? formData.supportNeedsOther : "",
         responses: activeResponses,
+        responseLabels: activeResponseLabels,
+        responseScale: {
+          type: "Likert de concordância",
+          points: 7,
+          notApplicableValue: "NA",
+          options: LIKERT_7_WITH_NA_SCALE.map((option) => ({
+            value: option.value,
+            label: option.label,
+          })),
+        },
 
         // Campos de compatibilidade com o payload do código anterior.
         genero: formData.gender,
@@ -2778,27 +2815,30 @@ export default function App() {
             ) : null}
 
             <div className="space-y-4">
+              <InfoBanner tone="slate">
+                Leia cada frase e escolha uma opção de 1 a 7. Marque “Não se aplica à minha realidade” quando necessário.
+              </InfoBanner>
               <LikertQuestion
                 id="common.relationship.expectations"
-                question="Quanto os cursos atenderam às suas expectativas?"
+                question="O curso ou os cursos atenderam às minhas expectativas."
                 value={formData.responses["common.relationship.expectations"]}
-                scale={EXPECTATION_SCALE}
+                scale={LIKERT_7_WITH_NA_SCALE}
                 onChange={(value) => updateResponse("common.relationship.expectations", value)}
                 error={hasError("common.relationship.expectations")}
               />
               <LikertQuestion
                 id="common.relationship.performance"
-                question="Como foi seu desempenho nos cursos?"
+                question="Considero que tive um bom desempenho no curso ou nos cursos."
                 value={formData.responses["common.relationship.performance"]}
-                scale={PERFORMANCE_SCALE}
+                scale={LIKERT_7_WITH_NA_SCALE}
                 onChange={(value) => updateResponse("common.relationship.performance", value)}
                 error={hasError("common.relationship.performance")}
               />
               <LikertQuestion
                 id="common.relationship.workload"
-                question="A duração dos cursos foi adequada?"
+                question="A carga horária do curso ou dos cursos foi adequada."
                 value={formData.responses["common.relationship.workload"]}
-                scale={WORKLOAD_SCALE}
+                scale={LIKERT_7_WITH_NA_SCALE}
                 onChange={(value) => updateResponse("common.relationship.workload", value)}
                 error={hasError("common.relationship.workload")}
               />
@@ -2810,7 +2850,7 @@ export default function App() {
         return (
           <div className="space-y-4">
             <InfoBanner tone="slate">
-              Em cada item, pense em como estava sua empresa antes dos cursos.
+              Leia cada frase e escolha uma opção de 1 a 7. Marque “Não se aplica à minha realidade” quando necessário.
             </InfoBanner>
             {BEFORE_QUESTIONS.map((question, index) => (
               <LikertQuestion
@@ -2819,7 +2859,7 @@ export default function App() {
                 question={question.text}
                 number={index + 1}
                 value={formData.responses[question.id]}
-                scale={BEFORE_SCALE}
+                scale={LIKERT_7_WITH_NA_SCALE}
                 onChange={(value) => updateResponse(question.id, value)}
                 error={hasError(question.id)}
               />
@@ -2831,6 +2871,9 @@ export default function App() {
         return (
           <div className="space-y-8">
             <div className="space-y-4">
+              <InfoBanner tone="slate">
+                Leia cada frase e escolha uma opção de 1 a 7. Marque “Não se aplica à minha realidade” quando necessário.
+              </InfoBanner>
               {APPLICATION_QUESTIONS.map((question, index) => (
                 <LikertQuestion
                   key={question.id}
@@ -2838,7 +2881,7 @@ export default function App() {
                   question={question.text}
                   number={index + 1}
                   value={formData.responses[question.id]}
-                  scale={AGREEMENT_SCALE}
+                  scale={LIKERT_7_WITH_NA_SCALE}
                   onChange={(value) => updateResponse(question.id, value)}
                   error={hasError(question.id)}
                 />
@@ -2985,7 +3028,7 @@ export default function App() {
         return (
           <div className="space-y-4">
             <InfoBanner tone="slate">
-              Em cada item, avalie se a empresa melhorou depois que você aplicou o conteúdo dos cursos.
+              Leia cada frase e escolha uma opção de 1 a 7. Marque “Não se aplica à minha realidade” quando necessário.
             </InfoBanner>
             {RESULT_QUESTIONS.map((question, index) => (
               <LikertQuestion
@@ -2994,7 +3037,7 @@ export default function App() {
                 question={question.text}
                 number={index + 1}
                 value={formData.responses[question.id]}
-                scale={AGREEMENT_WITH_NA_SCALE}
+                scale={LIKERT_7_WITH_NA_SCALE}
                 onChange={(value) => updateResponse(question.id, value)}
                 error={hasError(question.id)}
               />
@@ -3024,7 +3067,7 @@ export default function App() {
                         question={question.text}
                         number={Number(question.id.replace("q", ""))}
                         value={formData.responses[responseId]}
-                        scale={AGREEMENT_WITH_NA_SCALE}
+                        scale={LIKERT_7_WITH_NA_SCALE}
                         onChange={(value) => updateResponse(responseId, value)}
                         error={hasError(responseId)}
                       />
