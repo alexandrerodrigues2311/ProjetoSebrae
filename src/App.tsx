@@ -1,18 +1,7 @@
-Para implementar o salvamento de rascunho sem precisar de um banco de dados complexo, a melhor solução é utilizar o `localStorage` do próprio navegador. Assim, se o usuário fechar a aba, atualizar a página ou a internet cair, os dados e a etapa em que ele estava ficam salvos no aparelho dele.
-
-Aproveitei o embalo dos feedbacks da sua equipe (no print do WhatsApp) e já incorporei tudo neste código final:
-
-1. **Rascunho Automático (localStorage):** O progresso é salvo a cada clique. Se o usuário voltar, ele continua de onde parou. O rascunho é limpo automaticamente após o envio final.
-2. **Obrigatoriedade (Marco):** A trava foi adicionada. O botão "Continuar" só fica azul e clicável quando **todas** as perguntas daquela tela forem respondidas (tanto dados pessoais quanto as perguntas da escala Likert).
-3. **Múltiplos Cursos (Fernanda):** O código agora lê todos os cursos que o usuário marcou. Se ele marcou 3 cursos, o sistema vai gerar as 3 telas de blocos específicos em sequência antes de finalizar.
-
-Aqui está o **código completo e absoluto** com todas as melhorias de UX e metodológicas aplicadas. Substitua todo o conteúdo do seu `App.tsx`:
-
-```tsx
 import React, { useState, useEffect } from "react";
 import { Clock, AlertCircle, TrendingUp, Users, Smile, Cpu, Star, PlusCircle, CheckCircle2 } from "lucide-react";
 
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw8yWGHJmONTFshN8rqJIhthd_VFvTpRTeV7jPk931Vab6r_lDstn0Pexf2Ea_m3Lwl/exec"; 
+const GOOGLE_SCRIPT_URL = "[https://script.google.com/macros/s/AKfycbw8yWGHJmONTFshN8rqJIhthd_VFvTpRTeV7jPk931Vab6r_lDstn0Pexf2Ea_m3Lwl/exec](https://script.google.com/macros/s/AKfycbw8yWGHJmONTFshN8rqJIhthd_VFvTpRTeV7jPk931Vab6r_lDstn0Pexf2Ea_m3Lwl/exec)"; 
 
 const maskPhone = (v: string) => v.replace(/\D/g, '').replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2').slice(0, 15);
 const maskCPF = (v: string) => v.replace(/\D/g, '').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2').slice(0, 14);
@@ -36,7 +25,6 @@ const COMMON_BLOCKS = [
 const LIKERT = ["Discordo totalmente", "Discordo parcialmente", "Nem concordo, nem discordo", "Concordo parcialmente", "Concordo totalmente", "Não se aplica à minha realidade"];
 
 export default function App() {
-  // Inicialização com LocalStorage (Rascunho)
   const [step, setStep] = useState(() => {
     const savedStep = localStorage.getItem('sebrae_step');
     return savedStep ? parseInt(savedStep, 10) : 0;
@@ -57,7 +45,6 @@ export default function App() {
     return savedStep && parseInt(savedStep, 10) > 1 ? true : false;
   });
 
-  // Salvar no LocalStorage sempre que houver mudança
   useEffect(() => {
     if (step !== 99) {
       localStorage.setItem('sebrae_step', step.toString());
@@ -92,7 +79,6 @@ export default function App() {
     }
   };
 
-  // Trava de Obrigatoriedade (Valida se o bloco atual está 100% preenchido)
   const canAdvanceStep = () => {
     if (step === 1) return formData.fullName && formData.email && formData.phone && formData.genero && formData.raca && formData.quilombola && formData.pcd && (formData.pcd === 'Não' || formData.tiposPcd.length > 0);
     if (step === 2) return formData.cursos.length > 0;
@@ -117,7 +103,6 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...formData, timestamp: new Date().toISOString() }) 
       });
-      // Limpar rascunho após o envio bem-sucedido
       localStorage.removeItem('sebrae_step');
       localStorage.removeItem('sebrae_data');
       setStep(99);
@@ -127,7 +112,6 @@ export default function App() {
   };
 
   const handleNextStep = () => {
-    // Se estiver no último bloco específico (ou no bloco 7 se não houver cursos específicos)
     if (step === 7 + specificCourses.length || (step === 7 && specificCourses.length === 0)) {
       saveData();
     } else {
@@ -159,7 +143,7 @@ export default function App() {
     <div className="min-h-screen bg-gray-50 font-sans p-0">
       <header className="bg-white border-b border-gray-200 py-4 px-6 sticky top-0 z-50">
         <div className="max-w-5xl mx-auto grid grid-cols-[120px_1fr_120px] items-center">
-          <img src="https://sebrae.com.br/content/dam/portal-sebrae/na/pt/imagens/logo/logo-sebrae.svg" alt="Sebrae" className="h-8" />
+          <img src="[https://sebrae.com.br/content/dam/portal-sebrae/na/pt/imagens/logo/logo-sebrae.svg](https://sebrae.com.br/content/dam/portal-sebrae/na/pt/imagens/logo/logo-sebrae.svg)" alt="Sebrae" className="h-8" />
           <h1 className="text-[#005AA5] font-bold text-xs uppercase text-center truncate px-4">
             Mapeamento de Cadeias Produtivas, Vocações Regionais e Efetividade das Soluções do Sebrae
           </h1>
@@ -169,24 +153,22 @@ export default function App() {
 
       <main className="max-w-2xl mx-auto px-4 py-8 relative">
         
-        {/* Aviso de Rascunho */}
         {step > 0 && step < 99 && (
           <div className="absolute top-0 right-4 text-[10px] text-gray-400 flex items-center gap-1">
-            <Clock size={10} /> Rascunho salvo automaticamente
+            <Clock size="{10}"/> Rascunho salvo automaticamente
           </div>
         )}
 
-        {/* CAPA - STEP 0 */}
         {step === 0 && (
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100 animate-in zoom-in duration-500">
-            <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=2000" alt="Empreendedores focados" className="w-full h-72 object-cover object-center" />
+            <img src="[https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=2000](https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=2000)" alt="Empreendedores focados" className="w-full h-72 object-cover object-center" />
             <div className="p-10 text-center">
               <h2 className="text-3xl font-black text-gray-800 mb-4">Sua história inspira o futuro.</h2>
               <p className="text-gray-600 mb-8 leading-relaxed text-lg">
                 Participe da nossa pesquisa e ajude a fortalecer as soluções do Sebrae para quem empreende. Sua voz é o motor da nossa inovação.
               </p>
               <div className="inline-flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-full text-sm text-gray-600 font-medium mb-6">
-                <Clock size={16} /> É rapidinho: leva menos de 5 minutos.
+                <Clock size="{16}"/> É rapidinho: leva menos de 5 minutos.
               </div>
               <button onClick={() => setStep(1)} className="block w-full md:w-auto mx-auto bg-[#005AA5] text-white py-4 px-12 rounded-full font-bold text-lg hover:bg-blue-800 transition-all shadow-lg">
                 {formData.cpf ? "Continuar de onde parei" : "Quero deixar minha marca"}
@@ -195,7 +177,6 @@ export default function App() {
           </div>
         )}
 
-        {/* IDENTIFICAÇÃO E PERFIL - STEP 1 */}
         {step === 1 && (
           <div className="bg-white p-8 rounded-3xl shadow-lg border animate-in slide-in-from-right duration-500 space-y-6">
             {!isCpfValid ? (
@@ -207,7 +188,7 @@ export default function App() {
                   placeholder="000.000.000-00" 
                   className="w-full p-4 border-2 rounded-xl" 
                 />
-                {cpfError && <p className="text-red-500 text-sm flex items-center gap-1"><AlertCircle size={16}/> {cpfError}</p>}
+                {cpfError && <p className="text-red-500 text-sm flex items-center gap-1"><AlertCircle size="{16}"/> {cpfError}</p>}
                 <button onClick={handleCpfSubmit} className="w-full bg-[#005AA5] text-white p-4 rounded-xl font-bold">Validar CPF</button>
               </>
             ) : (
@@ -288,7 +269,6 @@ export default function App() {
           </div>
         )}
 
-        {/* SELEÇÃO DE CURSOS - STEP 2 */}
         {step === 2 && (
           <div className="bg-white p-8 rounded-3xl shadow-lg border animate-in slide-in-from-right duration-500">
             <h2 className="text-2xl font-bold text-[#005AA5] mb-6">Quais cursos você realizou no Sebrae?</h2>
@@ -300,7 +280,7 @@ export default function App() {
                 </button>
               ))}
               <button onClick={() => setFormData({...formData, cursos: formData.cursos.includes('outros') ? formData.cursos.filter(i => i !== 'outros') : [...formData.cursos, 'outros']})} className={`p-6 border-2 rounded-2xl flex flex-col items-center justify-center transition-all ${formData.cursos.includes('outros') ? 'bg-[#005AA5] text-white' : 'border-[#005AA5] text-[#005AA5] hover:bg-blue-50'}`}>
-                <PlusCircle className="mb-3" size={32} />
+                <PlusCircle className="mb-3" size="{32}"/>
                 <span className="font-bold text-sm">Outros</span>
               </button>
             </div>
@@ -310,7 +290,6 @@ export default function App() {
           </div>
         )}
 
-        {/* BLOCOS COMUNS (1 A 5) - STEPS 3 A 7 */}
         {step >= 3 && step <= 7 && (
           <div className="animate-in slide-in-from-right duration-500">
             <h2 className="text-2xl font-bold mb-6 text-[#005AA5] bg-white p-4 rounded-2xl shadow-sm border">{COMMON_BLOCKS[step - 3].title}</h2>
@@ -322,7 +301,6 @@ export default function App() {
           </div>
         )}
 
-        {/* BLOCOS ESPECÍFICOS DE CURSO (Renderiza de acordo com o número de cursos selecionados) */}
         {step >= 8 && step < 8 + specificCourses.length && (
           <div className="animate-in slide-in-from-right duration-500">
             <h2 className="text-2xl font-bold mb-6 text-[#005AA5] bg-white p-4 rounded-2xl shadow-sm border">
@@ -337,10 +315,9 @@ export default function App() {
           </div>
         )}
 
-        {/* AGRADECIMENTO FINAL - STEP 99 */}
         {step === 99 && (
           <div className="bg-white p-12 rounded-3xl shadow-2xl border border-gray-100 text-center animate-in zoom-in duration-500">
-            <CheckCircle2 size={80} className="mx-auto text-green-500 mb-6" />
+            <CheckCircle2 className="mx-auto text-green-500 mb-6" size="{80}"/>
             <h2 className="text-3xl font-black text-gray-800 mb-4">Obrigado pela sua contribuição!</h2>
             <p className="text-gray-600 text-lg">
               Suas respostas foram registradas com sucesso. Sua voz é essencial para continuarmos fortalecendo o empreendedorismo no Brasil.
@@ -352,5 +329,3 @@ export default function App() {
     </div>
   );
 }
-
-```
