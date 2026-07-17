@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Clock } from "lucide-react";
+import { Clock, AlertCircle } from "lucide-react";
 
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw8yWGHJmONTFshN8rqJIhthd_VFvTpRTeV7jPk931Vab6r_lDstn0Pexf2Ea_m3Lwl/exec"; 
 
@@ -14,7 +14,7 @@ export default function App() {
   const [step, setStep] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [isCpfValid, setIsCpfValid] = useState(false);
+  const [cpfError, setCpfError] = useState("");
   const [formData, setFormData] = useState({ 
     cpf: "", fullName: "", email: "", phone: "", genero: "", raca: "", quilombola: "", pcd: "", tiposPcd: "" 
   });
@@ -35,6 +35,15 @@ export default function App() {
     return true;
   };
 
+  const handleCpfSubmit = () => {
+    if (validateCPF(formData.cpf)) {
+      setCpfError("");
+      setStep(2);
+    } else {
+      setCpfError("CPF inválido. Por favor, verifique.");
+    }
+  };
+
   const saveData = async () => {
     setIsSaving(true);
     try {
@@ -46,7 +55,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans p-0">
-      {/* Cabeçalho centralizado e completo */}
       <header className="bg-white border-b border-gray-200 py-4 px-6 sticky top-0 z-50">
         <div className="max-w-5xl mx-auto grid grid-cols-[120px_1fr_120px] items-center">
           <img src="https://sebrae.com.br/content/dam/portal-sebrae/na/pt/imagens/logo/logo-sebrae.svg" alt="Sebrae" className="h-8" />
@@ -57,9 +65,9 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-8">
+      <main className="max-w-2xl mx-auto px-4 py-8">
         {step === 0 && (
-          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
+          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100 animate-in zoom-in duration-500">
             <img 
               src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=2000" 
               alt="Empreendedores focados" 
@@ -82,44 +90,82 @@ export default function App() {
         )}
 
         {step === 1 && (
-          <div className="bg-white p-8 rounded-3xl shadow-lg border animate-in fade-in duration-500">
-            <h2 className="text-2xl font-bold mb-6">Sobre Você</h2>
-            <input 
-              onChange={(e) => { setFormData({...formData, cpf: e.target.value}); setIsCpfValid(validateCPF(e.target.value)); }} 
-              placeholder="Digite seu CPF" 
-              className="w-full p-4 mb-6 border-2 border-gray-200 rounded-xl focus:border-[#005AA5] outline-none" 
-            />
+          <div className="bg-white p-8 rounded-3xl shadow-lg border animate-in slide-in-from-right duration-500">
+            <h2 className="text-2xl font-bold mb-6">Validação Inicial</h2>
+            <input onChange={(e) => setFormData({...formData, cpf: e.target.value})} placeholder="Digite seu CPF" className="w-full p-4 mb-2 border-2 rounded-xl" />
+            {cpfError && <p className="text-red-500 text-sm mb-4 flex items-center gap-1"><AlertCircle size={16}/> {cpfError}</p>}
+            <button onClick={handleCpfSubmit} className="w-full bg-[#005AA5] text-white p-4 rounded-xl font-bold">Continuar</button>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="bg-white p-8 rounded-3xl shadow-lg border animate-in slide-in-from-right duration-500 space-y-6">
+            <h2 className="text-2xl font-bold text-[#005AA5]">Sobre Você</h2>
             
-            {isCpfValid && (
-              <div className="space-y-6 animate-fade-in">
-                <input onChange={(e) => setFormData({...formData, fullName: e.target.value})} placeholder="Como posso te chamar?" className="w-full p-4 border rounded-xl" />
-                <div className="grid grid-cols-2 gap-4">
-                  <input type="email" onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="E-mail" className="p-4 border rounded-xl" />
-                  <input value={formData.phone} onChange={(e) => setFormData({...formData, phone: maskPhone(e.target.value)})} placeholder="(DD) 9XXXX-XXXX" className="p-4 border rounded-xl" />
-                </div>
+            <div><label className="block font-bold mb-1 text-sm">Nome Completo</label><input onChange={(e) => setFormData({...formData, fullName: e.target.value})} placeholder="Digite seu nome aqui" className="w-full p-4 border rounded-xl" /></div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className="block font-bold mb-1 text-sm">E-mail</label><input type="email" onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="exemplo@email.com" className="w-full p-4 border rounded-xl" /></div>
+              <div><label className="block font-bold mb-1 text-sm">Telefone / WhatsApp</label><input value={formData.phone} onChange={(e) => setFormData({...formData, phone: maskPhone(e.target.value)})} placeholder="(DD) 9XXXX-XXXX" className="w-full p-4 border rounded-xl" /></div>
+            </div>
 
-                <div className="border-t pt-6">
-                  <h3 className="font-bold mb-4">Identidade de Gênero</h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { l: "Mulher Cis", d: "Identifica-se como mulher e foi registrada com esse gênero ao nascer." },
-                      { l: "Homem Cis", d: "Identifica-se como homem e foi registrado com esse gênero ao nascer." },
-                      { l: "Mulher Trans", d: "Identifica-se como mulher, mas foi registrada com outro gênero ao nascer." },
-                      { l: "Homem Trans", d: "Identifica-se como homem, mas foi registrado com outro gênero ao nascer." },
-                      { l: "Não binário", d: "Não se identifica exclusivamente como homem ou como mulher." },
-                      { l: "Prefiro não informar", d: "" }
-                    ].map(g => (
-                      <button key={g.l} onClick={() => setFormData({...formData, genero: g.l})} className={`p-4 border rounded-xl text-left ${formData.genero === g.l ? 'bg-blue-50 border-blue-500' : ''}`}>
-                        <div className="font-bold text-sm">{g.l}</div>
-                        <div className="text-xs text-gray-500">{g.d}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <button onClick={saveData} className="w-full bg-[#005AA5] text-white p-4 rounded-xl font-bold">Finalizar</button>
+            <div className="border-t pt-6">
+              <h3 className="font-bold mb-4 text-lg">Identidade</h3>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { l: "Mulher Cis", d: "Identifica-se como mulher e foi registrada com esse gênero ao nascer." },
+                  { l: "Homem Cis", d: "Identifica-se como homem e foi registrado com esse gênero ao nascer." },
+                  { l: "Mulher Trans", d: "Identifica-se como mulher, mas foi registrada com outro gênero ao nascer." },
+                  { l: "Homem Trans", d: "Identifica-se como homem, mas foi registrado com outro gênero ao nascer." },
+                  { l: "Não binário", d: "Não se identifica exclusivamente como homem ou como mulher." },
+                  { l: "Prefiro não informar", d: "" }
+                ].map(g => (
+                  <button key={g.l} onClick={() => setFormData({...formData, genero: g.l})} className={`p-4 border rounded-xl text-left transition-all ${formData.genero === g.l ? 'bg-blue-50 border-blue-500' : 'hover:bg-gray-50'}`}>
+                    <div className="font-bold text-sm">{g.l}</div>
+                    <div className="text-xs text-gray-500">{g.d}</div>
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
+
+            <div className="border-t pt-6">
+              <h3 className="font-bold mb-3">Qual sua cor ou raça?</h3>
+              <div className="grid grid-cols-3 gap-2">
+                {["Amarela", "Branca", "Indígena", "Parda", "Preta", "Prefiro não informar"].map(r => (
+                  <button key={r} onClick={() => setFormData({...formData, raca: r})} className={`p-3 border rounded-xl ${formData.raca === r ? 'bg-blue-600 text-white' : ''}`}>{r}</button>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t pt-6">
+                <h3 className="font-bold mb-3">Você se considera pessoa quilombola?</h3>
+                <div className="flex gap-4">
+                    {["Não", "Sim", "Prefiro não informar"].map(q => (
+                        <button key={q} onClick={() => setFormData({...formData, quilombola: q})} className={`flex-1 p-3 border rounded-xl ${formData.quilombola === q ? 'bg-blue-600 text-white' : ''}`}>{q}</button>
+                    ))}
+                </div>
+            </div>
+
+            <div className="border-t pt-6">
+              <h3 className="font-bold mb-3">Você é Pessoa com Deficiência (PcD)?</h3>
+              <div className="flex gap-4">
+                {["Não", "Sim"].map(o => (
+                  <button key={o} onClick={() => setFormData({...formData, pcd: o})} className={`flex-1 p-4 border rounded-xl ${formData.pcd === o ? (o === 'Sim' ? 'bg-green-600 text-white' : 'bg-red-500 text-white') : ''}`}>{o}</button>
+                ))}
+              </div>
+              {formData.pcd === 'Sim' && (
+                <div className="mt-4 p-4 border rounded-xl bg-gray-50">
+                  <label className="font-bold mb-2 block">Selecione o tipo de deficiência:</label>
+                  <select onChange={(e) => setFormData({...formData, tiposPcd: e.target.value})} className="w-full p-3 border rounded-lg">
+                    {["Deficiência Auditiva", "Deficiência Física", "Deficiência Intelectual", "Deficiência Psicossocial", "Deficiência Visual", "Autismo (TEA)", "Prefiro não informar"].map(t => <option key={t}>{t}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <button onClick={saveData} disabled={isSaving} className="w-full bg-[#005AA5] text-white p-4 rounded-xl font-bold mt-6 shadow-lg hover:scale-[1.02] transition-transform">
+                {isSaving ? 'Enviando...' : 'Finalizar'}
+            </button>
           </div>
         )}
       </main>
