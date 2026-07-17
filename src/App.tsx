@@ -37,8 +37,21 @@ export default function App() {
     return resto === parseInt(clean.substring(10, 11));
   };
 
-  const isFormValid = () => {
-    return formData.fullName && formData.email && formData.phone && formData.genero && formData.raca && formData.quilombola && formData.pcd;
+  const handleCpfSubmit = () => {
+    if (validateCPF(formData.cpf)) {
+      setCpfError("");
+      setIsCpfValid(true);
+    } else {
+      setCpfError("CPF inválido. Por favor, verifique.");
+      setIsCpfValid(false);
+    }
+  };
+
+  const togglePcdType = (type: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tiposPcd: prev.tiposPcd.includes(type) ? prev.tiposPcd.filter(t => t !== type) : [...prev.tiposPcd, type]
+    }));
   };
 
   return (
@@ -46,7 +59,9 @@ export default function App() {
       <header className="bg-white border-b border-gray-200 py-4 px-6 sticky top-0 z-50">
         <div className="max-w-5xl mx-auto grid grid-cols-[120px_1fr_120px] items-center">
           <img src="https://sebrae.com.br/content/dam/portal-sebrae/na/pt/imagens/logo/logo-sebrae.svg" alt="Sebrae" className="h-8" />
-          <h1 className="text-[#005AA5] font-bold text-xs uppercase text-center truncate px-4">Mapeamento de Cadeias Produtivas e Efetividade</h1>
+          <h1 className="text-[#005AA5] font-bold text-xs uppercase text-center truncate px-4">
+            Mapeamento de Cadeias Produtivas, Vocações Regionais e Efetividade das Soluções do Sebrae
+          </h1>
           <div /> 
         </div>
       </header>
@@ -70,10 +85,10 @@ export default function App() {
           <div className="bg-white p-8 rounded-3xl shadow-lg border animate-in slide-in-from-right duration-500 space-y-6">
             {!isCpfValid ? (
               <>
-                <h2 className="text-2xl font-bold text-[#005AA5]">Identificação</h2>
+                <h2 className="text-2xl font-bold text-[#005AA5]">Identificação: informe seu CPF</h2>
                 <input value={formData.cpf} onChange={(e) => setFormData({...formData, cpf: maskCPF(e.target.value)})} placeholder="000.000.000-00" className="w-full p-4 border-2 rounded-xl" />
                 {cpfError && <p className="text-red-500 text-sm flex items-center gap-1"><AlertCircle size={16}/> {cpfError}</p>}
-                <button onClick={() => validateCPF(formData.cpf) ? setIsCpfValid(true) : setCpfError("CPF inválido.")} className="w-full bg-[#005AA5] text-white p-4 rounded-xl font-bold">Validar CPF</button>
+                <button onClick={handleCpfSubmit} className="w-full bg-[#005AA5] text-white p-4 rounded-xl font-bold">Validar</button>
               </>
             ) : (
               <div className="animate-fade-in space-y-6">
@@ -83,20 +98,17 @@ export default function App() {
                   <div><label className="block font-bold mb-1 text-sm">E-mail</label><input type="email" onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="exemplo@dominio.com" className="w-full p-4 border rounded-xl" /></div>
                   <div><label className="block font-bold mb-1 text-sm">Telefone / WhatsApp</label><input value={formData.phone} onChange={(e) => setFormData({...formData, phone: maskPhone(e.target.value)})} placeholder="(31) 99999-9999" className="w-full p-4 border rounded-xl" /></div>
                 </div>
-                
                 <div className="border-t pt-6"><h3 className="font-bold mb-4 text-lg">Identidade</h3><div className="grid grid-cols-2 gap-3">{[
                   { l: "Mulher Cis", d: "Registrada mulher ao nascer." }, { l: "Homem Cis", d: "Registrado homem ao nascer." },
                   { l: "Mulher Trans", d: "Identifica-se mulher, registrada outro." }, { l: "Homem Trans", d: "Identifica-se homem, registrado outro." },
                   { l: "Não binário", d: "Não se identifica exclusivamente." }, { l: "Prefiro não informar", d: "" }
                 ].map(g => (<button key={g.l} onClick={() => setFormData({...formData, genero: g.l})} className={`p-4 border rounded-xl text-left ${formData.genero === g.l ? 'bg-[#005AA5] text-white' : 'border-[#005AA5]'}`}><div className="font-bold text-sm">{g.l}</div><div className="text-xs opacity-80">{g.d}</div></button>))}</div></div>
-
                 <div className="border-t pt-6"><h3 className="font-bold mb-3">Qual sua cor ou raça?</h3><div className="grid grid-cols-3 gap-2">{["Amarela", "Branca", "Indígena", "Parda", "Preta", "Prefiro não informar"].map(r => (<button key={r} onClick={() => setFormData({...formData, raca: r})} className={`p-3 border rounded-xl ${formData.raca === r ? 'bg-[#005AA5] text-white' : 'border-[#005AA5]'}`}>{r}</button>))}</div></div>
                 <div className="border-t pt-6"><h3 className="font-bold mb-3">Pessoa quilombola?</h3><div className="flex gap-4">{["Não", "Sim", "Prefiro não informar"].map(q => (<button key={q} onClick={() => setFormData({...formData, quilombola: q})} className={`flex-1 p-3 border rounded-xl ${formData.quilombola === q ? 'bg-[#005AA5] text-white' : 'border-[#005AA5]'}`}>{q}</button>))}</div></div>
                 <div className="border-t pt-6"><h3 className="font-bold mb-3">PcD?</h3><div className="flex gap-4">{["Não", "Sim"].map(o => (<button key={o} onClick={() => setFormData({...formData, pcd: o})} className={`flex-1 p-4 border rounded-xl ${formData.pcd === o ? 'bg-[#005AA5] text-white' : 'border-[#005AA5]'}`}>{o}</button>))}</div>
-                  {formData.pcd === 'Sim' && (<div className="grid grid-cols-1 gap-2 mt-4">{["Deficiência Auditiva", "Deficiência Física", "Deficiência Intelectual", "Deficiência Psicossocial", "Deficiência Visual", "Autismo (TEA)", "Prefiro não informar"].map(t => (<button key={t} onClick={() => setFormData(prev => ({...prev, tiposPcd: prev.tiposPcd.includes(t) ? prev.tiposPcd.filter(i => i !== t) : [...prev.tiposPcd, t]}))} className={`p-3 border rounded-xl ${formData.tiposPcd.includes(t) ? 'bg-[#005AA5] text-white' : 'border-[#005AA5]'}`}>{t}</button>))}</div>)}
+                  {formData.pcd === 'Sim' && (<div className="grid grid-cols-1 gap-2 mt-4">{["Deficiência Auditiva", "Deficiência Física", "Deficiência Intelectual", "Deficiência Psicossocial", "Deficiência Visual", "Autismo (TEA)", "Prefiro não informar"].map(t => (<button key={t} onClick={() => togglePcdType(t)} className={`p-3 border rounded-xl ${formData.tiposPcd.includes(t) ? 'bg-[#005AA5] text-white' : 'border-[#005AA5]'}`}>{t}</button>))}</div>)}
                 </div>
-
-                <div className="flex gap-4 pt-6"><button onClick={() => { setIsCpfValid(false); setFormData({...formData, cpf: ''}); }} className="flex-1 p-4 border border-[#005AA5] text-[#005AA5] rounded-xl font-bold">Voltar</button><button onClick={() => setStep(2)} disabled={!isFormValid()} className={`flex-1 p-4 rounded-xl font-bold ${isFormValid() ? 'bg-[#005AA5] text-white' : 'bg-gray-300'}`}>Continuar</button></div>
+                <div className="flex gap-4 pt-6"><button onClick={() => { setIsCpfValid(false); setFormData({...formData, cpf: ''}); }} className="flex-1 p-4 border border-[#005AA5] text-[#005AA5] rounded-xl font-bold">Voltar</button><button onClick={() => setStep(2)} className="flex-1 bg-[#005AA5] text-white p-4 rounded-xl font-bold">Continuar</button></div>
               </div>
             )}
           </div>
