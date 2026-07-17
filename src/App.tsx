@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Clock, AlertCircle, TrendingUp, Users, Smile, Cpu, Star, PlusCircle, CheckCircle2 } from "lucide-react";
 
-const GOOGLE_SCRIPT_URL = "[https://script.google.com/macros/s/AKfycbw8yWGHJmONTFshN8rqJIhthd_VFvTpRTeV7jPk931Vab6r_lDstn0Pexf2Ea_m3Lwl/exec](https://script.google.com/macros/s/AKfycbw8yWGHJmONTFshN8rqJIhthd_VFvTpRTeV7jPk931Vab6r_lDstn0Pexf2Ea_m3Lwl/exec)"; 
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw8yWGHJmONTFshN8rqJIhthd_VFvTpRTeV7jPk931Vab6r_lDstn0Pexf2Ea_m3Lwl/exec"; 
 
 const maskPhone = (v: string) => v.replace(/\D/g, '').replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2').slice(0, 15);
 const maskCPF = (v: string) => v.replace(/\D/g, '').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2').slice(0, 14);
@@ -24,23 +24,37 @@ const COMMON_BLOCKS = [
 
 const LIKERT = ["Discordo totalmente", "Discordo parcialmente", "Nem concordo, nem discordo", "Concordo parcialmente", "Concordo totalmente", "Não se aplica à minha realidade"];
 
+interface IFormData {
+  cpf: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  genero: string;
+  raca: string;
+  quilombola: string;
+  pcd: string;
+  tiposPcd: string[];
+  cursos: string[];
+  responses: Record<string, number>;
+}
+
 export default function App() {
-  const [step, setStep] = useState(() => {
+  const [step, setStep] = useState<number>(() => {
     const savedStep = localStorage.getItem('sebrae_step');
     return savedStep ? parseInt(savedStep, 10) : 0;
   });
 
-  const [formData, setFormData] = useState(() => {
+  const [formData, setFormData] = useState<IFormData>(() => {
     const savedData = localStorage.getItem('sebrae_data');
     return savedData ? JSON.parse(savedData) : { 
       cpf: "", fullName: "", email: "", phone: "", 
-      genero: "", raca: "", quilombola: "", pcd: "", tiposPcd: [] as string[], 
-      cursos: [] as string[], responses: {} as Record<string, number> 
+      genero: "", raca: "", quilombola: "", pcd: "", tiposPcd: [], 
+      cursos: [], responses: {} 
     };
   });
 
   const [cpfError, setCpfError] = useState("");
-  const [isCpfValid, setIsCpfValid] = useState(() => {
+  const [isCpfValid, setIsCpfValid] = useState<boolean>(() => {
     const savedStep = localStorage.getItem('sebrae_step');
     return savedStep && parseInt(savedStep, 10) > 1 ? true : false;
   });
@@ -52,7 +66,7 @@ export default function App() {
     }
   }, [step, formData]);
 
-  const specificCourses = formData.cursos.filter(c => c !== 'outros');
+  const specificCourses = formData.cursos.filter((c: string) => c !== 'outros');
 
   const validateCPF = (cpf: string) => {
     const clean = cpf.replace(/[^\d]+/g, '');
@@ -80,7 +94,7 @@ export default function App() {
   };
 
   const canAdvanceStep = () => {
-    if (step === 1) return formData.fullName && formData.email && formData.phone && formData.genero && formData.raca && formData.quilombola && formData.pcd && (formData.pcd === 'Não' || formData.tiposPcd.length > 0);
+    if (step === 1) return !!(formData.fullName && formData.email && formData.phone && formData.genero && formData.raca && formData.quilombola && formData.pcd && (formData.pcd === 'Não' || formData.tiposPcd.length > 0));
     if (step === 2) return formData.cursos.length > 0;
     if (step >= 3 && step <= 7) {
       const blockIndex = step - 3;
@@ -90,7 +104,7 @@ export default function App() {
       const courseIndex = step - 8;
       const courseId = specificCourses[courseIndex];
       const course = COURSES.find(c => c.id === courseId);
-      return course?.questions.every((_, i) => formData.responses[`SPECIFIC_${courseId}_${i}`]);
+      return course?.questions.every((_, i) => formData.responses[`SPECIFIC_${courseId}_${i}`]) ?? true;
     }
     return true;
   };
@@ -143,7 +157,7 @@ export default function App() {
     <div className="min-h-screen bg-gray-50 font-sans p-0">
       <header className="bg-white border-b border-gray-200 py-4 px-6 sticky top-0 z-50">
         <div className="max-w-5xl mx-auto grid grid-cols-[120px_1fr_120px] items-center">
-          <img src="[https://sebrae.com.br/content/dam/portal-sebrae/na/pt/imagens/logo/logo-sebrae.svg](https://sebrae.com.br/content/dam/portal-sebrae/na/pt/imagens/logo/logo-sebrae.svg)" alt="Sebrae" className="h-8" />
+          <img src="https://sebrae.com.br/content/dam/portal-sebrae/na/pt/imagens/logo/logo-sebrae.svg" alt="Sebrae" className="h-8" />
           <h1 className="text-[#005AA5] font-bold text-xs uppercase text-center truncate px-4">
             Mapeamento de Cadeias Produtivas, Vocações Regionais e Efetividade das Soluções do Sebrae
           </h1>
@@ -155,20 +169,20 @@ export default function App() {
         
         {step > 0 && step < 99 && (
           <div className="absolute top-0 right-4 text-[10px] text-gray-400 flex items-center gap-1">
-            <Clock size="{10}"/> Rascunho salvo automaticamente
+            <Clock size={10} /> Rascunho salvo automaticamente
           </div>
         )}
 
         {step === 0 && (
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100 animate-in zoom-in duration-500">
-            <img src="[https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=2000](https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=2000)" alt="Empreendedores focados" className="w-full h-72 object-cover object-center" />
+            <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=2000" alt="Empreendedores focados" className="w-full h-72 object-cover object-center" />
             <div className="p-10 text-center">
               <h2 className="text-3xl font-black text-gray-800 mb-4">Sua história inspira o futuro.</h2>
               <p className="text-gray-600 mb-8 leading-relaxed text-lg">
                 Participe da nossa pesquisa e ajude a fortalecer as soluções do Sebrae para quem empreende. Sua voz é o motor da nossa inovação.
               </p>
               <div className="inline-flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-full text-sm text-gray-600 font-medium mb-6">
-                <Clock size="{16}"/> É rapidinho: leva menos de 5 minutos.
+                <Clock size={16} /> É rapidinho: leva menos de 5 minutos.
               </div>
               <button onClick={() => setStep(1)} className="block w-full md:w-auto mx-auto bg-[#005AA5] text-white py-4 px-12 rounded-full font-bold text-lg hover:bg-blue-800 transition-all shadow-lg">
                 {formData.cpf ? "Continuar de onde parei" : "Quero deixar minha marca"}
@@ -188,7 +202,7 @@ export default function App() {
                   placeholder="000.000.000-00" 
                   className="w-full p-4 border-2 rounded-xl" 
                 />
-                {cpfError && <p className="text-red-500 text-sm flex items-center gap-1"><AlertCircle size="{16}"/> {cpfError}</p>}
+                {cpfError && <p className="text-red-500 text-sm flex items-center gap-1"><AlertCircle size={16} /> {cpfError}</p>}
                 <button onClick={handleCpfSubmit} className="w-full bg-[#005AA5] text-white p-4 rounded-xl font-bold">Validar CPF</button>
               </>
             ) : (
@@ -280,7 +294,7 @@ export default function App() {
                 </button>
               ))}
               <button onClick={() => setFormData({...formData, cursos: formData.cursos.includes('outros') ? formData.cursos.filter(i => i !== 'outros') : [...formData.cursos, 'outros']})} className={`p-6 border-2 rounded-2xl flex flex-col items-center justify-center transition-all ${formData.cursos.includes('outros') ? 'bg-[#005AA5] text-white' : 'border-[#005AA5] text-[#005AA5] hover:bg-blue-50'}`}>
-                <PlusCircle className="mb-3" size="{32}"/>
+                <PlusCircle className="mb-3" size={32} />
                 <span className="font-bold text-sm">Outros</span>
               </button>
             </div>
@@ -317,7 +331,7 @@ export default function App() {
 
         {step === 99 && (
           <div className="bg-white p-12 rounded-3xl shadow-2xl border border-gray-100 text-center animate-in zoom-in duration-500">
-            <CheckCircle2 className="mx-auto text-green-500 mb-6" size="{80}"/>
+            <CheckCircle2 className="mx-auto text-green-500 mb-6" size={80} />
             <h2 className="text-3xl font-black text-gray-800 mb-4">Obrigado pela sua contribuição!</h2>
             <p className="text-gray-600 text-lg">
               Suas respostas foram registradas com sucesso. Sua voz é essencial para continuarmos fortalecendo o empreendedorismo no Brasil.
