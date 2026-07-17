@@ -256,7 +256,7 @@ export default function App() {
             {COMMON_BLOCKS[step - 3].questions.map((q, i) => renderLikert(`${COMMON_BLOCKS[step - 3].id}_${i}`, q))}
             
             <button onClick={() => setStep(step + 1)} className="w-full bg-[#005AA5] text-white p-4 rounded-xl font-bold shadow-lg hover:bg-blue-800 transition-all">
-              {step === 7 && formData.cursos.includes('outros') && formData.cursos.length === 1 ? "Ir para o final" : "Continuar para o próximo bloco"}
+              Continuar
             </button>
           </div>
         )}
@@ -266,18 +266,22 @@ export default function App() {
           <div className="animate-in slide-in-from-right duration-500">
             <h2 className="text-2xl font-bold mb-6 text-[#005AA5] bg-white p-4 rounded-2xl shadow-sm border">Sobre o curso realizado</h2>
             
-            {/* Renderiza as questões apenas se o primeiro curso selecionado estiver mapeado nas questões específicas (não for "Outros") */}
             {formData.cursos.length > 0 && COURSES.find(c => c.id === formData.cursos[0]) ? (
-              COURSES.find(c => c.id === formData.cursos[0])?.questions.map((q, i) => renderLikert(`SPECIFIC_${formData.cursos[0]}_${i}`, q))
+              <>
+                {COURSES.find(c => c.id === formData.cursos[0])?.questions.map((q, i) => renderLikert(`SPECIFIC_${formData.cursos[0]}_${i}`, q))}
+                <button onClick={saveData} className="w-full bg-green-600 text-white p-4 rounded-xl font-bold shadow-lg hover:bg-green-700 transition-all">
+                  Enviar
+                </button>
+              </>
             ) : (
               <div className="bg-white p-8 rounded-2xl shadow-sm border text-center mb-8 text-gray-600">
-                Como você marcou "Outros" ou cursos que não possuem blocos específicos nesta etapa, você já pode enviar sua pesquisa.
+                <p className="mb-6">Você selecionou cursos que não possuem questões específicas nesta etapa. Você já pode enviar sua pesquisa.</p>
+                <button onClick={saveData} className="w-full bg-green-600 text-white p-4 rounded-xl font-bold shadow-lg hover:bg-green-700 transition-all">
+                  Enviar
+                </button>
               </div>
             )}
             
-            <button onClick={saveData} className="w-full bg-green-600 text-white p-4 rounded-xl font-bold shadow-lg hover:bg-green-700 transition-all">
-              Enviar Pesquisa
-            </button>
           </div>
         )}
 
