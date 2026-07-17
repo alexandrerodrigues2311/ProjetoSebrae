@@ -73,15 +73,17 @@ export default function App() {
 
       <main className="max-w-3xl mx-auto px-4 py-8">
         {step === 0 && (
-          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
-            {/* Imagem de alta qualidade e bem enquadrada */}
-            <div className="h-80 w-full overflow-hidden">
-                <img src="https://images.unsplash.com/photo-1573496799515-eeb69ddeb10f?auto=format&fit=crop&q=80&w=2000" alt="Empreendedora profissional" className="w-full h-full object-cover object-top" />
-            </div>
+          <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
+            {/* Imagem robusta de negócios e diversidade */}
+            <img 
+              src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=2000" 
+              alt="Ambiente de negócios colaborativo" 
+              className="w-full h-72 object-cover" 
+            />
             <div className="p-10 text-center">
               <h2 className="text-3xl font-black text-gray-800 mb-4">Sua história transforma o mercado.</h2>
               <p className="text-gray-600 mb-8 leading-relaxed text-lg">
-                Participe do nosso mapeamento e ajude a fortalecer as soluções do Sebrae para quem empreende.
+                Participe da nossa pesquisa e ajude a fortalecer as soluções do Sebrae para quem empreende.
               </p>
               <button onClick={() => setStep(1)} className="bg-[#005AA5] text-white py-4 px-12 rounded-full font-bold text-lg hover:bg-blue-800 transition-all shadow-lg w-full md:w-auto">
                 Quero deixar minha marca
