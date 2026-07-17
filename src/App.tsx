@@ -19,8 +19,8 @@ import {
  * - lucide-react
  *
  * O envio passa por uma função da Vercel em /api/submit.
- * Assim, o formulário só confirma o envio depois que o Google Apps Script
- * informa que a resposta foi registrada.
+ * A integração valida a resposta JSON do servidor, repete falhas temporárias
+ * sem duplicar registros e mantém o rascunho quando o armazenamento não é confirmado.
  */
 
 const SURVEY_SUBMIT_URL = "/api/submit";
@@ -2437,21 +2437,102 @@ export default function App() {
         timestamp: new Date().toISOString(),
       };
 
-      const response = await fetch(SURVEY_SUBMIT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        keepalive: true,
-      });
+      type SubmitResult = {
+        status?: string;
+        message?: string;
+        code?: string;
+        submissionId?: string;
+        action?: string;
+        requestId?: string;
+        retryable?: boolean;
+      };
 
-      const result = (await response.json().catch(() => null)) as
-        | { status?: string; message?: string; submissionId?: string }
-        | null;
+      const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      const retryDelays = [0, 900, 1800];
+      let confirmedResult: SubmitResult | null = null;
+      let lastError: Error | null = null;
 
-      if (!response.ok || result?.status !== "sucesso") {
-        throw new Error(
-          result?.message ||
-            "A resposta não foi confirmada pelo serviço de armazenamento.",
+      for (let attempt = 0; attempt < retryDelays.length; attempt += 1) {
+        if (retryDelays[attempt] > 0) {
+          await new Promise((resolve) => window.setTimeout(resolve, retryDelays[attempt]));
+        }
+
+        try {
+          const response = await fetch(SURVEY_SUBMIT_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Request-Id": requestId,
+              "X-Questionnaire-Client": "sebrae-survey-v9",
+            },
+            body: JSON.stringify(payload),
+          });
+
+          const responseText = await response.text();
+          let result: SubmitResult | null = null;
+
+          if (responseText.trim()) {
+            try {
+              result = JSON.parse(responseText) as SubmitResult;
+            } catch {
+              result = null;
+            }
+          }
+
+          if (!result) {
+            const looksLikeHtml = /<!doctype html|<html[\s>]/i.test(responseText);
+            const routeCode = looksLikeHtml || response.status === 404
+              ? "API-ROTA"
+              : "API-RESPOSTA";
+
+            throw new Error(
+              `O serviço de envio não foi carregado corretamente. ` +
+                `Suas respostas continuam salvas neste navegador. ` +
+                `Atualize o site depois da correção e tente de novo. Código: ${routeCode}.`,
+            );
+          }
+
+          if (response.ok && result.status === "sucesso") {
+            confirmedResult = result;
+            break;
+          }
+
+          const message =
+            result.message ||
+            "Não foi possível confirmar o armazenamento das respostas.";
+          const code = result.code ? ` Código: ${result.code}.` : "";
+          const error = new Error(`${message}${code}`);
+          const retryableStatus = [408, 425, 429, 500, 502, 503, 504].includes(
+            response.status,
+          );
+
+          if (attempt < retryDelays.length - 1 && (result.retryable || retryableStatus)) {
+            lastError = error;
+            continue;
+          }
+
+          throw error;
+        } catch (error) {
+          const normalizedError =
+            error instanceof Error
+              ? error
+              : new Error("Não foi possível enviar agora.");
+
+          const routeFailure = /API-ROTA|API-RESPOSTA/.test(normalizedError.message);
+          if (routeFailure || attempt === retryDelays.length - 1) {
+            throw normalizedError;
+          }
+
+          lastError = normalizedError;
+        }
+      }
+
+      if (!confirmedResult) {
+        throw (
+          lastError ||
+          new Error(
+            "Não foi possível enviar agora. Suas respostas continuam salvas neste navegador.",
+          )
         );
       }
 
