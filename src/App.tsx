@@ -20,7 +20,7 @@ import {
 // CONFIGURAÇÃO GOOGLE SHEETS
 // ==========================================
 // A URL do seu Web App do Google Apps Script entrará aqui:
-const GOOGLE_SCRIPT_URL = ""; 
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw-xAKrwx_EQlrwEUz1pYoyGf64vHXotEAVkt_titDDyvWczMDxaHz3nJLqNzX_e3Si/exec"; 
 
 // ==========================================
 // BASE DE DADOS E METODOLOGIA (SEBRAE)
