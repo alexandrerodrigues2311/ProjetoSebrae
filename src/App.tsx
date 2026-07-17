@@ -22,7 +22,7 @@ import {
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw8yWGHJmONTFshN8rqJIhthd_VFvTpRTeV7jPk931Vab6r_lDstn0Pexf2Ea_m3Lwl/exec"; 
 
 // ==========================================
-// BASE DE DADOS E METODOLOGIA
+// DADOS E METODOLOGIA
 // ==========================================
 const COURSES = [
   { id: "financas", title: "Gestão Financeira", icon: TrendingUp },
@@ -34,12 +34,8 @@ const COURSES = [
 ];
 
 const LIKERT_OPTIONS = [
-  { value: 1, label: "1" },
-  { value: 2, label: "2" },
-  { value: 3, label: "3" },
-  { value: 4, label: "4" },
-  { value: 5, label: "5" },
-  { value: 0, label: "N/A" },
+  { value: 1, label: "1" }, { value: 2, label: "2" }, { value: 3, label: "3" }, 
+  { value: 4, label: "4" }, { value: 5, label: "5" }, { value: 0, label: "N/A" }
 ];
 
 const QUESTIONS_BY_COURSE: Record<string, string[]> = {
@@ -51,9 +47,6 @@ const QUESTIONS_BY_COURSE: Record<string, string[]> = {
   outro: ["O curso estava relacionado às minhas necessidades.", "O curso contribuiu para melhorar minha forma de gerir.", "As orientações foram claras para a prática."]
 };
 
-// ==========================================
-// COMPONENTES E LÓGICA PRINCIPAL
-// ==========================================
 export default function App() {
   const [step, setStep] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
@@ -87,18 +80,29 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans p-4">
-      <main className="max-w-3xl mx-auto py-10">
-        {/* Renderização simplificada para teste rápido */}
+    <div className="min-h-screen bg-[#F8FAFC] font-sans">
+      {/* HEADER ATUALIZADO COM LOGO SEBRAE E TÍTULO */}
+      <header className="bg-white shadow-sm border-b-[6px] border-[#005AA5] sticky top-0 z-50">
+        <div className="max-w-4xl mx-auto px-6 py-4 flex flex-col md:flex-row items-center gap-4">
+          <img src="https://sebrae.com.br/content/dam/portal-sebrae/na/pt/imagens/logo/logo-sebrae.svg" alt="Logo SEBRAE" className="h-10 w-auto" />
+          <div className="text-center md:text-left border-l-0 md:border-l border-gray-200 md:pl-4">
+            <h1 className="text-[#005AA5] font-bold text-sm md:text-lg leading-tight tracking-tight uppercase">
+              Mapeamento de Cadeias Produtivas, Vocações Regionais e Efetividade das Soluções do SEBRAE
+            </h1>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-3xl mx-auto px-4 py-10">
         {step === 0 && (
-          <div className="bg-white p-10 rounded-3xl text-center shadow-xl">
-            <h1 className="text-3xl font-black text-[#005AA5] mb-6">Mapeamento SEBRAE</h1>
-            <button onClick={() => setStep(1)} className="bg-[#005AA5] text-white py-4 px-10 rounded-full font-bold">Iniciar Pesquisa</button>
+          <div className="text-center py-20 bg-white rounded-3xl shadow-lg border border-gray-100">
+            <h1 className="text-3xl font-black text-[#005AA5] mb-6">Bem-vindo à Pesquisa</h1>
+            <button onClick={() => setStep(1)} className="bg-[#005AA5] text-white py-4 px-10 rounded-full font-bold shadow-xl">Iniciar Pesquisa</button>
           </div>
         )}
         {step === 1 && (
           <div className="bg-white p-8 rounded-3xl shadow-lg">
-            <h2 className="text-2xl font-bold mb-6">Identificação</h2>
+            <h2 className="text-2xl font-bold mb-6 text-[#005AA5]">Identificação</h2>
             <input onChange={(e) => setFormData({...formData, cpf: e.target.value})} placeholder="CPF" className="w-full p-4 mb-4 border rounded-xl" />
             <input onChange={(e) => setFormData({...formData, fullName: e.target.value})} placeholder="Nome Completo" className="w-full p-4 mb-4 border rounded-xl" />
             <input onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="E-mail" className="w-full p-4 mb-4 border rounded-xl" />
@@ -107,7 +111,7 @@ export default function App() {
         )}
         {step === 2 && (
           <div className="bg-white p-8 rounded-3xl shadow-lg">
-            <h2 className="text-2xl font-bold mb-6">Selecione o Curso</h2>
+            <h2 className="text-2xl font-bold mb-6 text-[#005AA5]">Selecione o Curso</h2>
             {COURSES.map(c => (
               <div key={c.id} onClick={() => setFormData({...formData, courseId: c.id})} className={`p-4 border-2 rounded-xl mb-3 cursor-pointer ${formData.courseId === c.id ? 'border-[#005AA5] bg-blue-50' : ''}`}>
                 {c.title}
@@ -131,7 +135,7 @@ export default function App() {
             <button onClick={saveData} disabled={isSaving} className="w-full bg-[#005AA5] text-white p-4 rounded-xl">{isSaving ? 'Enviando...' : 'Finalizar'}</button>
           </div>
         )}
-        {isSubmitted && <div className="text-center py-20 font-bold text-2xl">Dados enviados com sucesso!</div>}
+        {isSubmitted && <div className="text-center py-20 font-bold text-2xl text-[#005AA5]">Dados enviados com sucesso!</div>}
       </main>
     </div>
   );
