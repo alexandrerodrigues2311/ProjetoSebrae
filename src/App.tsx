@@ -12,6 +12,20 @@ const COURSES = [
   { id: "outro", title: "Outro Curso", icon: BookOpen },
 ];
 
+const LIKERT_OPTIONS = [
+  { value: 1, label: "1" }, { value: 2, label: "2" }, { value: 3, label: "3" }, 
+  { value: 4, label: "4" }, { value: 5, label: "5" }, { value: 0, label: "N/A" }
+];
+
+const QUESTIONS_BY_COURSE: Record<string, string[]> = {
+  financas: ["Após o curso, passei a organizar melhor as finanças do meu negócio ou projeto.", "O curso contribuiu para melhorar meu controle de custos, despesas e receitas.", "Passei a utilizar informações financeiras para tomar decisões com mais segurança."],
+  pessoas: ["O curso contribuiu para melhorar a forma como organizo e conduzo as pessoas.", "Passei a valorizar mais a comunicação, o treinamento e o acompanhamento da equipe.", "O curso ajudou a definir melhor funções, responsabilidades e rotinas."],
+  atendimento: ["Após o curso, passei a entender melhor como atender e tratar bem os clientes.", "O curso contribuiu para fortalecer a fidelização dos clientes.", "Busco utilizar alternativas digitais para atrair antigos e novos clientes."],
+  ia: ["Após o curso, passei a entender melhor o que é Inteligência Artificial e como usá-la.", "O curso mostrou formas de usar IA para aumentar produtividade e reduzir tempo.", "Passei a ter mais atenção com dados pessoais e sigilosos ao utilizar IA."],
+  emocional: ["O curso contribuiu para aumentar minha confiança para enfrentar desafios.", "O curso me ajudou a lidar melhor com pressões, conflitos ou situações desafiadoras.", "Passei a agir com mais equilíbrio e clareza em situações difíceis."],
+  outro: ["O curso estava relacionado às minhas necessidades.", "O curso contribuiu para melhorar minha forma de gerir.", "As orientações foram claras para a prática."]
+};
+
 export default function App() {
   const [step, setStep] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
@@ -29,11 +43,11 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-      {/* Cabeçalho centralizado com título completo */}
-      <header className="bg-white border-b border-gray-200 py-4 px-6 shadow-sm sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <img src="https://sebrae.com.br/content/dam/portal-sebrae/na/pt/imagens/logo/logo-sebrae.svg" alt="Sebrae" className="h-8" />
-          <h1 className="text-gray-700 font-bold text-sm md:text-sm uppercase tracking-wide text-center">
+      {/* Cabeçalho centralizado em tom de azul Sebrae */}
+      <header className="bg-[#005AA5] border-b border-blue-700 py-4 px-6 shadow-md sticky top-0 z-50 text-white">
+        <div className="max-w-5xl mx-auto flex flex-col items-center gap-2">
+          <img src="https://sebrae.com.br/content/dam/portal-sebrae/na/pt/imagens/logo/logo-sebrae.svg" alt="Sebrae" className="h-8 brightness-0 invert" />
+          <h1 className="font-bold text-xs uppercase tracking-widest text-center">
             Mapeamento de Cadeias Produtivas, Vocações Regionais e Efetividade das Soluções do Sebrae
           </h1>
         </div>
@@ -43,28 +57,68 @@ export default function App() {
         {step === 0 && (
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
             <img 
-              src="https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80&w=2000" 
-              alt="Ambiente de negócios" 
+              src="https://images.unsplash.com/photo-1529070538774-1843bc3265d4?auto=format&fit=crop&q=80&w=2000" 
+              alt="Empreendedores focados no futuro" 
               className="w-full h-72 object-cover object-center" 
             />
             <div className="p-10 text-center">
-              <h2 className="text-3xl font-black text-gray-800 mb-4">Sua experiência constrói o futuro do seu negócio.</h2>
-              <p className="text-gray-600 mb-8 leading-relaxed text-lg">
-                Sua jornada com o Sebrae é única. Ao compartilhar sua visão nesta pesquisa, você nos ajuda a aprimorar as soluções que impulsionam o sucesso de milhares de empreendedores como você. <b>Sua voz é o motor da nossa inovação.</b>
-              </p>
+              <h2 className="text-2xl font-black text-gray-800 mb-6">Sua participação fortalece o empreendedorismo brasileiro.</h2>
               
-              <div className="inline-flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-full text-sm text-gray-600 font-medium mb-6">
-                <Clock size={16} /> É rapidinho: leva menos de 5 minutos.
+              <div className="inline-flex items-center gap-2 bg-blue-50 text-[#005AA5] px-4 py-2 rounded-full text-sm font-bold mb-6">
+                <Clock size={16} /> Pesquisa rápida: menos de 5 minutos.
               </div>
+              
               <button onClick={() => setStep(1)} className="block w-full md:w-auto mx-auto bg-[#005AA5] text-white py-4 px-12 rounded-full font-bold text-lg hover:bg-blue-800 transition-all shadow-lg">
-                Quero deixar minha marca
+                Participe da nossa pesquisa
               </button>
               
               <p className="text-gray-400 text-xs mt-6">Seus dados estarão protegidos pelo Sebrae (LGPD - Lei nº 13.709/2018).</p>
             </div>
           </div>
         )}
-        {/* ... restante do formulário mantido igual ... */}
+
+        {step > 0 && step < 4 && (
+            <div className="bg-white p-8 rounded-3xl shadow-md border border-gray-100 animate-slide-up">
+                {step === 1 && (
+                    <>
+                        <h2 className="text-2xl font-bold mb-6 text-[#005AA5]">Identificação</h2>
+                        <input onChange={(e) => setFormData({...formData, cpf: e.target.value})} placeholder="CPF" className="w-full p-4 mb-4 border rounded-xl" />
+                        <input onChange={(e) => setFormData({...formData, fullName: e.target.value})} placeholder="Nome Completo" className="w-full p-4 mb-4 border rounded-xl" />
+                        <input onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="E-mail" className="w-full p-4 mb-4 border rounded-xl" />
+                        <button onClick={() => setStep(2)} className="w-full bg-[#005AA5] text-white p-4 rounded-xl font-bold">Avançar</button>
+                    </>
+                )}
+                {step === 2 && (
+                    <>
+                        <h2 className="text-2xl font-bold mb-6 text-[#005AA5]">Selecione o Curso</h2>
+                        {COURSES.map(c => (
+                        <div key={c.id} onClick={() => setFormData({...formData, courseId: c.id})} className={`p-4 border-2 rounded-xl mb-3 cursor-pointer ${formData.courseId === c.id ? 'border-[#005AA5] bg-blue-50' : ''}`}>
+                            {c.title}
+                        </div>
+                        ))}
+                        <button onClick={() => setStep(3)} className="w-full bg-[#005AA5] text-white p-4 rounded-xl mt-4 font-bold">Avançar</button>
+                    </>
+                )}
+                {step === 3 && (
+                    <>
+                        <h2 className="text-2xl font-bold mb-6 text-[#005AA5]">Avaliação</h2>
+                        {QUESTIONS_BY_COURSE[formData.courseId].map((q, i) => (
+                        <div key={i} className="mb-6">
+                            <p className="font-bold mb-3 text-gray-700">{q}</p>
+                            <div className="flex gap-2">
+                            {LIKERT_OPTIONS.map(opt => (
+                                <button key={opt.value} onClick={() => setFormData({...formData, evaluations: {...formData.evaluations, [i]: opt.value}})} className={`p-3 border rounded font-bold w-12 ${formData.evaluations[i] === opt.value ? 'bg-[#005AA5] text-white' : ''}`}>{opt.label}</button>
+                            ))}
+                            </div>
+                        </div>
+                        ))}
+                        <button onClick={saveData} disabled={isSaving} className="w-full bg-[#005AA5] text-white p-4 rounded-xl font-bold">{isSaving ? 'Enviando...' : 'Finalizar'}</button>
+                    </>
+                )}
+            </div>
+        )}
+
+        {isSubmitted && <div className="text-center py-20 font-bold text-2xl text-[#005AA5] animate-fade-in">Dados enviados com sucesso!</div>}
       </main>
     </div>
   );
