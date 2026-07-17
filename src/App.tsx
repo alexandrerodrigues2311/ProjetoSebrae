@@ -37,21 +37,8 @@ export default function App() {
     return resto === parseInt(clean.substring(10, 11));
   };
 
-  const handleCpfSubmit = () => {
-    if (validateCPF(formData.cpf)) {
-      setCpfError("");
-      setIsCpfValid(true);
-    } else {
-      setCpfError("CPF inválido. Por favor, verifique.");
-      setIsCpfValid(false);
-    }
-  };
-
-  const togglePcdType = (type: string) => {
-    setFormData(prev => ({
-      ...prev,
-      tiposPcd: prev.tiposPcd.includes(type) ? prev.tiposPcd.filter(t => t !== type) : [...prev.tiposPcd, type]
-    }));
+  const isFormValid = () => {
+    return formData.fullName && formData.email && formData.phone && formData.genero && formData.raca && formData.quilombola && formData.pcd;
   };
 
   return (
@@ -59,7 +46,7 @@ export default function App() {
       <header className="bg-white border-b border-gray-200 py-4 px-6 sticky top-0 z-50">
         <div className="max-w-5xl mx-auto grid grid-cols-[120px_1fr_120px] items-center">
           <img src="https://sebrae.com.br/content/dam/portal-sebrae/na/pt/imagens/logo/logo-sebrae.svg" alt="Sebrae" className="h-8" />
-          <h1 className="text-[#005AA5] font-bold text-xs uppercase text-center truncate px-4">Mapeamento de Cadeias Produtivas, Vocações Regionais e Efetividade das Soluções do Sebrae</h1>
+          <h1 className="text-[#005AA5] font-bold text-xs uppercase text-center truncate px-4">Mapeamento de Cadeias Produtivas e Efetividade</h1>
           <div /> 
         </div>
       </header>
@@ -70,12 +57,11 @@ export default function App() {
             <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=2000" className="w-full h-72 object-cover object-center" />
             <div className="p-10 text-center">
               <h2 className="text-3xl font-black text-gray-800 mb-4">Sua história inspira o futuro.</h2>
-              <p className="text-gray-600 mb-8 leading-relaxed text-lg">Participe da nossa pesquisa e ajude a fortalecer as soluções do Sebrae para quem empreende. Sua voz é o motor da nossa inovação.</p>
+              <p className="text-gray-600 mb-8 leading-relaxed text-lg">Participe da nossa pesquisa e ajude a fortalecer as soluções do Sebrae para quem empreende.</p>
               <div className="inline-flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-full text-sm text-gray-600 font-medium mb-6">
                 <Clock size={16} /> É rapidinho: leva menos de 5 minutos.
               </div>
               <button onClick={() => setStep(1)} className="block w-full md:w-auto mx-auto bg-[#005AA5] text-white py-4 px-12 rounded-full font-bold text-lg hover:bg-blue-800 transition-all shadow-lg">Quero deixar minha marca</button>
-              <p className="text-gray-400 text-xs mt-6">Seus dados estarão protegidos pelo Sebrae (LGPD - Lei nº 13.709/2018).</p>
             </div>
           </div>
         )}
@@ -87,10 +73,7 @@ export default function App() {
                 <h2 className="text-2xl font-bold text-[#005AA5]">Identificação</h2>
                 <input value={formData.cpf} onChange={(e) => setFormData({...formData, cpf: maskCPF(e.target.value)})} placeholder="000.000.000-00" className="w-full p-4 border-2 rounded-xl" />
                 {cpfError && <p className="text-red-500 text-sm flex items-center gap-1"><AlertCircle size={16}/> {cpfError}</p>}
-                <div className="flex gap-4">
-                    <button onClick={() => setStep(0)} className="flex-1 p-4 border border-[#005AA5] rounded-xl font-bold text-[#005AA5]">Voltar</button>
-                    <button onClick={handleCpfSubmit} className="flex-1 bg-[#005AA5] text-white p-4 rounded-xl font-bold">Validar</button>
-                </div>
+                <button onClick={() => validateCPF(formData.cpf) ? setIsCpfValid(true) : setCpfError("CPF inválido.")} className="w-full bg-[#005AA5] text-white p-4 rounded-xl font-bold">Validar CPF</button>
               </>
             ) : (
               <div className="animate-fade-in space-y-6">
@@ -101,24 +84,19 @@ export default function App() {
                   <div><label className="block font-bold mb-1 text-sm">Telefone / WhatsApp</label><input value={formData.phone} onChange={(e) => setFormData({...formData, phone: maskPhone(e.target.value)})} placeholder="(31) 99999-9999" className="w-full p-4 border rounded-xl" /></div>
                 </div>
                 
-                <div className="border-t pt-6"><h3 className="font-bold mb-4 text-lg">Identidade</h3><div className="grid grid-cols-2 gap-3">
-                  {[
-                    { l: "Mulher Cis", d: "Identifica-se como mulher e foi registrada com esse gênero ao nascer." },
-                    { l: "Homem Cis", d: "Identifica-se como homem e foi registrado com esse gênero ao nascer." },
-                    { l: "Mulher Trans", d: "Identifica-se como mulher, mas foi registrada com outro gênero ao nascer." },
-                    { l: "Homem Trans", d: "Identifica-se como homem, mas foi registrado com outro gênero ao nascer." },
-                    { l: "Não binário", d: "Não se identifica exclusivamente como homem ou como mulher." },
-                    { l: "Prefiro não informar", d: "" }
-                  ].map(g => (<button key={g.l} onClick={() => setFormData({...formData, genero: g.l})} className={`p-4 border rounded-xl text-left ${formData.genero === g.l ? 'bg-[#005AA5] text-white' : 'border-[#005AA5]'}`}><div className="font-bold text-sm">{g.l}</div><div className="text-xs opacity-80">{g.d}</div></button>))}
-                </div></div>
+                <div className="border-t pt-6"><h3 className="font-bold mb-4 text-lg">Identidade</h3><div className="grid grid-cols-2 gap-3">{[
+                  { l: "Mulher Cis", d: "Registrada mulher ao nascer." }, { l: "Homem Cis", d: "Registrado homem ao nascer." },
+                  { l: "Mulher Trans", d: "Identifica-se mulher, registrada outro." }, { l: "Homem Trans", d: "Identifica-se homem, registrado outro." },
+                  { l: "Não binário", d: "Não se identifica exclusivamente." }, { l: "Prefiro não informar", d: "" }
+                ].map(g => (<button key={g.l} onClick={() => setFormData({...formData, genero: g.l})} className={`p-4 border rounded-xl text-left ${formData.genero === g.l ? 'bg-[#005AA5] text-white' : 'border-[#005AA5]'}`}><div className="font-bold text-sm">{g.l}</div><div className="text-xs opacity-80">{g.d}</div></button>))}</div></div>
 
                 <div className="border-t pt-6"><h3 className="font-bold mb-3">Qual sua cor ou raça?</h3><div className="grid grid-cols-3 gap-2">{["Amarela", "Branca", "Indígena", "Parda", "Preta", "Prefiro não informar"].map(r => (<button key={r} onClick={() => setFormData({...formData, raca: r})} className={`p-3 border rounded-xl ${formData.raca === r ? 'bg-[#005AA5] text-white' : 'border-[#005AA5]'}`}>{r}</button>))}</div></div>
                 <div className="border-t pt-6"><h3 className="font-bold mb-3">Pessoa quilombola?</h3><div className="flex gap-4">{["Não", "Sim", "Prefiro não informar"].map(q => (<button key={q} onClick={() => setFormData({...formData, quilombola: q})} className={`flex-1 p-3 border rounded-xl ${formData.quilombola === q ? 'bg-[#005AA5] text-white' : 'border-[#005AA5]'}`}>{q}</button>))}</div></div>
                 <div className="border-t pt-6"><h3 className="font-bold mb-3">PcD?</h3><div className="flex gap-4">{["Não", "Sim"].map(o => (<button key={o} onClick={() => setFormData({...formData, pcd: o})} className={`flex-1 p-4 border rounded-xl ${formData.pcd === o ? 'bg-[#005AA5] text-white' : 'border-[#005AA5]'}`}>{o}</button>))}</div>
-                  {formData.pcd === 'Sim' && (<div className="grid grid-cols-1 gap-2 mt-4">{["Deficiência Auditiva", "Deficiência Física", "Deficiência Intelectual", "Deficiência Psicossocial", "Deficiência Visual", "Autismo (TEA)", "Prefiro não informar"].map(t => (<button key={t} onClick={() => togglePcdType(t)} className={`p-3 border rounded-xl ${formData.tiposPcd.includes(t) ? 'bg-[#005AA5] text-white' : 'border-[#005AA5]'}`}>{t}</button>))}</div>)}
+                  {formData.pcd === 'Sim' && (<div className="grid grid-cols-1 gap-2 mt-4">{["Deficiência Auditiva", "Deficiência Física", "Deficiência Intelectual", "Deficiência Psicossocial", "Deficiência Visual", "Autismo (TEA)", "Prefiro não informar"].map(t => (<button key={t} onClick={() => setFormData(prev => ({...prev, tiposPcd: prev.tiposPcd.includes(t) ? prev.tiposPcd.filter(i => i !== t) : [...prev.tiposPcd, t]}))} className={`p-3 border rounded-xl ${formData.tiposPcd.includes(t) ? 'bg-[#005AA5] text-white' : 'border-[#005AA5]'}`}>{t}</button>))}</div>)}
                 </div>
 
-                <div className="flex gap-4 pt-6"><button onClick={() => setIsCpfValid(false)} className="flex-1 p-4 border border-[#005AA5] text-[#005AA5] rounded-xl font-bold">Voltar</button><button onClick={() => setStep(2)} className="flex-1 bg-[#005AA5] text-white p-4 rounded-xl font-bold">Continuar</button></div>
+                <div className="flex gap-4 pt-6"><button onClick={() => { setIsCpfValid(false); setFormData({...formData, cpf: ''}); }} className="flex-1 p-4 border border-[#005AA5] text-[#005AA5] rounded-xl font-bold">Voltar</button><button onClick={() => setStep(2)} disabled={!isFormValid()} className={`flex-1 p-4 rounded-xl font-bold ${isFormValid() ? 'bg-[#005AA5] text-white' : 'bg-gray-300'}`}>Continuar</button></div>
               </div>
             )}
           </div>
@@ -139,7 +117,7 @@ export default function App() {
                   <span className="font-bold text-sm">Outros</span>
               </button>
             </div>
-            <div className="flex gap-4 mt-8"><button onClick={() => setStep(1)} className="flex-1 p-4 border border-[#005AA5] text-[#005AA5] rounded-xl font-bold">Voltar</button><button className="flex-1 bg-[#005AA5] text-white p-4 rounded-xl font-bold">Finalizar</button></div>
+            <div className="flex gap-4 mt-8"><button onClick={() => setStep(1)} className="flex-1 p-4 border border-[#005AA5] text-[#005AA5] rounded-xl font-bold">Voltar</button><button onClick={() => alert("Finalizado!")} className="flex-1 bg-[#005AA5] text-white p-4 rounded-xl font-bold">Finalizar</button></div>
           </div>
         )}
       </main>
