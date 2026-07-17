@@ -26,11 +26,14 @@ import {
 const GOOGLE_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbw8yWGHJmONTFshN8rqJIhthd_VFvTpRTeV7jPk931Vab6r_lDstn0Pexf2Ea_m3Lwl/exec";
 
-const SURVEY_VERSION = "sebrae-2026-nucleo-comum-customizado-v5-ux-sebrae";
-const DRAFT_KEY = "sebrae_questionario_2026_draft_v5_ux_sebrae";
+const SURVEY_VERSION =
+  "sebrae-2026-nucleo-comum-customizado-v6-localizacao-experiencia";
+const DRAFT_KEY =
+  "sebrae_questionario_2026_draft_v6_localizacao_experiencia";
 const SEBRAE_LGPD_URL = "https://sebrae.com.br/subsites/lgpd";
-const COVER_IMAGE_URL =
-  "https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1600&q=85";
+const COVER_IMAGE_URL = "/sebrae-empreendedores-diversos.webp";
+const REVERSE_GEOCODE_URL =
+  "https://api.bigdatacloud.net/data/reverse-geocode-client";
 
 type IconComponent = typeof AlertCircle;
 
@@ -103,6 +106,7 @@ interface SurveyFormData {
   professionalArea: string;
   professionalAreaOther: string;
   yearsInCurrentArea: string;
+  hadEntrepreneurialExperience: string;
   previousEntrepreneurialArea: string;
   previousEntrepreneurialAreaOther: string;
   residenceCity: string;
@@ -168,6 +172,7 @@ const createEmptyForm = (): SurveyFormData => ({
   professionalArea: "",
   professionalAreaOther: "",
   yearsInCurrentArea: "",
+  hadEntrepreneurialExperience: "",
   previousEntrepreneurialArea: "",
   previousEntrepreneurialAreaOther: "",
   residenceCity: "",
@@ -265,6 +270,19 @@ const worksToday = (professionalCategory: string) =>
   Boolean(professionalCategory) &&
   !NON_WORKING_CATEGORY_IDS.includes(professionalCategory);
 
+const hasValidYearsInCurrentArea = (value: string) => {
+  if (!isFilled(value)) return false;
+  const years = Number(value);
+  return Number.isFinite(years) && years >= 0 && years <= 80;
+};
+
+const normalizeSearchText = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLocaleLowerCase("pt-BR");
+
 const getFirstName = (fullName: string) => {
   const first = fullName.trim().split(/\s+/)[0] || "";
   if (!first) return "";
@@ -333,6 +351,11 @@ const PROFESSIONAL_AREA_OPTIONS: OptionItem[] = [
   { value: "outro", label: "Outra área" },
 ];
 
+const ENTREPRENEURIAL_EXPERIENCE_OPTIONS: OptionItem[] = [
+  { value: "sim", label: "Sim" },
+  { value: "nao", label: "Não" },
+];
+
 const PREVIOUS_EXPERIENCE_OPTIONS: OptionItem[] = [
   { value: "agronegocio", label: "Agronegócio" },
   { value: "comercio", label: "Comércio" },
@@ -344,8 +367,7 @@ const PREVIOUS_EXPERIENCE_OPTIONS: OptionItem[] = [
   { value: "turismo_gastronomia", label: "Turismo, gastronomia e hospitalidade" },
   { value: "educacao_pesquisa", label: "Educação e pesquisa" },
   { value: "profissional_liberal", label: "Atividade profissional liberal" },
-  { value: "sem_experiencia", label: "Nunca tive experiência como empreendedor" },
-  { value: "outro", label: "Outro" },
+  { value: "outro", label: "Outra área" },
 ];
 
 const GENDER_OPTIONS: OptionItem[] = [
@@ -579,6 +601,28 @@ const STATES: OptionItem[] = [
   { value: "SE", label: "Sergipe" },
   { value: "TO", label: "Tocantins" },
 ];
+
+interface ReverseGeocodeResponse {
+  city?: string;
+  locality?: string;
+  principalSubdivision?: string;
+  principalSubdivisionCode?: string;
+}
+
+const getStateCodeFromLocation = (
+  subdivisionCode?: string,
+  subdivisionName?: string,
+) => {
+  const code = subdivisionCode?.split("-").pop()?.toUpperCase() || "";
+  if (STATES.some((state) => state.value === code)) return code;
+
+  const normalizedName = normalizeSearchText(subdivisionName || "");
+  return (
+    STATES.find(
+      (state) => normalizeSearchText(state.label) === normalizedName,
+    )?.value || ""
+  );
+};
 
 interface IBGEMunicipality {
   id: number;
@@ -1159,7 +1203,8 @@ const getMissingItems = (
         "Escolha a opção que melhor descreve você hoje",
       );
 
-      if (worksToday(data.professionalCategory)) {
+      const isWorking = worksToday(data.professionalCategory);
+      if (isWorking) {
         add(!data.professionalArea, "professionalArea", "Escolha sua área de trabalho");
         add(
           data.professionalArea === "outro" && !isFilled(data.professionalAreaOther),
@@ -1167,23 +1212,40 @@ const getMissingItems = (
           "Informe a outra área de trabalho",
         );
         add(
-          !isFilled(data.yearsInCurrentArea),
+          !hasValidYearsInCurrentArea(data.yearsInCurrentArea),
           "yearsInCurrentArea",
-          "Informe há quanto tempo você está nessa área",
+          "Informe um tempo válido, de 0 a 80 anos",
         );
       }
 
-      add(
-        !data.previousEntrepreneurialArea,
-        "previousEntrepreneurialArea",
-        "Informe se você já teve experiência como empreendedor",
-      );
-      add(
-        data.previousEntrepreneurialArea === "outro" &&
-          !isFilled(data.previousEntrepreneurialAreaOther),
-        "previousEntrepreneurialAreaOther",
-        "Informe a outra área da experiência",
-      );
+      const currentSituationIsComplete =
+        Boolean(data.professionalCategory) &&
+        (!isWorking ||
+          (Boolean(data.professionalArea) &&
+            (data.professionalArea !== "outro" ||
+              isFilled(data.professionalAreaOther)) &&
+            hasValidYearsInCurrentArea(data.yearsInCurrentArea)));
+
+      if (currentSituationIsComplete) {
+        add(
+          !data.hadEntrepreneurialExperience,
+          "hadEntrepreneurialExperience",
+          "Informe se você já teve experiência como empreendedor",
+        );
+        add(
+          data.hadEntrepreneurialExperience === "sim" &&
+            !data.previousEntrepreneurialArea,
+          "previousEntrepreneurialArea",
+          "Escolha a área da sua experiência como empreendedor",
+        );
+        add(
+          data.hadEntrepreneurialExperience === "sim" &&
+            data.previousEntrepreneurialArea === "outro" &&
+            !isFilled(data.previousEntrepreneurialAreaOther),
+          "previousEntrepreneurialAreaOther",
+          "Informe a outra área da experiência",
+        );
+      }
       break;
     }
 
@@ -1372,11 +1434,20 @@ function FieldLabel({ label, required }: Pick<FieldBaseProps, "label" | "require
   );
 }
 
-function FieldError() {
+function FieldError({ message = "Confira este campo." }: { message?: string }) {
   return (
     <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-red-700">
       <AlertCircle size={15} aria-hidden="true" />
-      Confira este campo.
+      {message}
+    </p>
+  );
+}
+
+function FieldSuccess({ message }: { message: string }) {
+  return (
+    <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
+      <CheckCircle2 size={15} aria-hidden="true" />
+      {message}
     </p>
   );
 }
@@ -1384,12 +1455,16 @@ function FieldError() {
 interface TextFieldProps extends FieldBaseProps {
   value: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
   type?: React.HTMLInputTypeAttribute;
   placeholder?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
   min?: string;
   max?: string;
+  maxLength?: number;
   autoComplete?: string;
+  errorMessage?: string;
+  successMessage?: string;
 }
 
 function TextField({
@@ -1397,16 +1472,28 @@ function TextField({
   label,
   value,
   onChange,
+  onBlur,
   type = "text",
   placeholder,
   inputMode,
   min,
   max,
+  maxLength,
   autoComplete,
   required,
   helper,
   error,
+  errorMessage,
+  successMessage,
 }: TextFieldProps) {
+  const describedBy = [
+    helper ? `${id}-helper` : "",
+    error ? `${id}-error` : "",
+    successMessage && !error ? `${id}-success` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div data-field={id}>
       <label htmlFor={id}>
@@ -1420,24 +1507,37 @@ function TextField({
         inputMode={inputMode}
         min={min}
         max={max}
+        maxLength={maxLength}
         autoComplete={autoComplete}
         required={required}
         placeholder={placeholder}
+        onBlur={onBlur}
         onChange={(event: React.ChangeEvent<HTMLInputElement>) => onChange(event.target.value)}
         className={`min-h-12 w-full rounded-xl border bg-white px-4 py-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-4 ${
           error
             ? "border-red-500 focus:border-red-600 focus:ring-red-100"
-            : "border-slate-300 focus:border-[#2F55D4] focus:ring-blue-100"
+            : successMessage
+              ? "border-emerald-500 focus:border-emerald-600 focus:ring-emerald-100"
+              : "border-slate-300 focus:border-[#2F55D4] focus:ring-blue-100"
         }`}
         aria-invalid={error || undefined}
-        aria-describedby={helper ? `${id}-helper` : undefined}
+        aria-describedby={describedBy || undefined}
       />
       {helper ? (
         <p id={`${id}-helper`} className="mt-2 text-sm text-slate-500">
           {helper}
         </p>
       ) : null}
-      {error ? <FieldError /> : null}
+      {error ? (
+        <div id={`${id}-error`}>
+          <FieldError message={errorMessage} />
+        </div>
+      ) : null}
+      {successMessage && !error ? (
+        <div id={`${id}-success`}>
+          <FieldSuccess message={successMessage} />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1807,10 +1907,24 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [cpfTouched, setCpfTouched] = useState(false);
+  const [locationStatus, setLocationStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
+  const [locationMessage, setLocationMessage] = useState("");
 
   const firstName = useMemo(() => getFirstName(formData.fullName), [formData.fullName]);
   const isPJ = formData.professionalCategory.startsWith("pj_");
   const isWorkingToday = worksToday(formData.professionalCategory);
+  const cpfDigits = formData.cpf.replace(/\D/g, "");
+  const cpfIsValid = validateCPF(formData.cpf);
+  const professionalSituationIsComplete =
+    Boolean(formData.professionalCategory) &&
+    (!isWorkingToday ||
+      (Boolean(formData.professionalArea) &&
+        (formData.professionalArea !== "outro" ||
+          isFilled(formData.professionalAreaOther)) &&
+        hasValidYearsInCurrentArea(formData.yearsInCurrentArea)));
   const hasCourse = formData.courseContact === "sim";
   const hasOnlineCourseContact = formData.courseFormats.includes("online");
   const hasPresencialCourseContact = formData.courseFormats.includes("presencial");
@@ -2038,6 +2152,25 @@ export default function App() {
     });
   };
 
+  const updateHadEntrepreneurialExperience = (value: string) => {
+    setFormData((previous) => ({
+      ...previous,
+      hadEntrepreneurialExperience: value,
+      previousEntrepreneurialArea:
+        value === "sim" ? previous.previousEntrepreneurialArea : "",
+      previousEntrepreneurialAreaOther:
+        value === "sim" ? previous.previousEntrepreneurialAreaOther : "",
+    }));
+  };
+
+  const updateCpf = (value: string) => {
+    const masked = maskCPF(value);
+    setFormData((previous) => ({ ...previous, cpf: masked }));
+    if (masked.replace(/\D/g, "").length === 11) {
+      setCpfTouched(true);
+    }
+  };
+
   const updateCourseExperience = (value: string) => {
     setFormData((previous) => ({
       ...previous,
@@ -2082,6 +2215,83 @@ export default function App() {
       residenceState: state,
       residenceCity: previous.residenceState === state ? previous.residenceCity : "",
     }));
+    setLocationStatus("idle");
+    setLocationMessage("");
+  };
+
+  const detectResidenceLocation = async () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setLocationStatus("error");
+      setLocationMessage(
+        "Seu navegador não permite usar a localização. Escolha o estado e o município.",
+      );
+      return;
+    }
+
+    setLocationStatus("loading");
+    setLocationMessage("Buscando sua localização...");
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: false,
+          timeout: 12000,
+          maximumAge: 10 * 60 * 1000,
+        });
+      });
+
+      const query = new URLSearchParams({
+        latitude: String(position.coords.latitude),
+        longitude: String(position.coords.longitude),
+        localityLanguage: "pt",
+      });
+      const response = await fetch(`${REVERSE_GEOCODE_URL}?${query.toString()}`);
+      if (!response.ok) {
+        throw new Error("Falha ao identificar a região");
+      }
+
+      const location = (await response.json()) as ReverseGeocodeResponse;
+      const state = getStateCodeFromLocation(
+        location.principalSubdivisionCode,
+        location.principalSubdivision,
+      );
+      const city = (location.city || location.locality || "").trim();
+
+      if (!state) {
+        throw new Error("Estado não encontrado");
+      }
+
+      setFormData((previous) => ({
+        ...previous,
+        residenceState: state,
+        residenceCity: city,
+      }));
+      setLocationStatus("success");
+      setLocationMessage(
+        city
+          ? `Encontramos ${city} / ${state}. Confira os campos antes de continuar.`
+          : `Encontramos o estado ${state}. Escolha seu município para continuar.`,
+      );
+    } catch (error) {
+      let message =
+        "Não foi possível preencher pela localização. Escolha o estado e o município.";
+
+      if (typeof error === "object" && error !== null && "code" in error) {
+        const geolocationCode = Number(
+          (error as Partial<GeolocationPositionError>).code,
+        );
+        if (geolocationCode === 1) {
+          message =
+            "A localização não foi autorizada. Escolha o estado e o município.";
+        } else if (geolocationCode === 3) {
+          message =
+            "A localização demorou para responder. Tente novamente ou preencha os campos.";
+        }
+      }
+
+      setLocationStatus("error");
+      setLocationMessage(message);
+    }
   };
 
   const updateCompanyState = (state: string) => {
@@ -2150,6 +2360,9 @@ export default function App() {
     setShowErrors(false);
     setPageError("");
     setSubmitError("");
+    setCpfTouched(false);
+    setLocationStatus("idle");
+    setLocationMessage("");
   };
 
   const moveToPage = (pageId: string) => {
@@ -2228,6 +2441,17 @@ export default function App() {
         professionalArea: isWorkingToday ? formData.professionalArea : "",
         professionalAreaOther: isWorkingToday ? formData.professionalAreaOther : "",
         yearsInCurrentArea: isWorkingToday ? formData.yearsInCurrentArea : "",
+        hadEntrepreneurialExperience: formData.hadEntrepreneurialExperience,
+        entrepreneurialExperience: formData.hadEntrepreneurialExperience,
+        previousEntrepreneurialArea:
+          formData.hadEntrepreneurialExperience === "sim"
+            ? formData.previousEntrepreneurialArea
+            : "sem_experiencia",
+        previousEntrepreneurialAreaOther:
+          formData.hadEntrepreneurialExperience === "sim" &&
+          formData.previousEntrepreneurialArea === "outro"
+            ? formData.previousEntrepreneurialAreaOther
+            : "",
         courseExperience: formData.courseContact,
         courseContact: normalizedCourseContact,
         courseFormats: hasCourse ? formData.courseFormats : [],
@@ -2315,6 +2539,10 @@ export default function App() {
   };
 
   const goNext = async () => {
+    if (currentPage.kind === "identification") {
+      setCpfTouched(true);
+    }
+
     const missing = getMissingItems(currentPage, formData, isPJ);
     if (missing.length > 0) {
       setShowErrors(true);
@@ -2424,12 +2652,21 @@ export default function App() {
                   id="cpf"
                   label="CPF"
                   value={formData.cpf}
-                  onChange={(value) => updateField("cpf", maskCPF(value))}
+                  onChange={updateCpf}
+                  onBlur={() => setCpfTouched(true)}
                   placeholder="000.000.000-00"
                   inputMode="numeric"
+                  maxLength={14}
                   autoComplete="off"
+                  helper="Digite os 11 números. O CPF é conferido antes de você avançar."
                   required
-                  error={hasError("cpf")}
+                  error={(cpfTouched || hasError("cpf")) && !cpfIsValid}
+                  errorMessage={
+                    cpfDigits.length < 11
+                      ? "Digite os 11 números do CPF."
+                      : "CPF inválido. Confira os números."
+                  }
+                  successMessage={cpfIsValid ? "CPF válido." : undefined}
                 />
                 <TextField
                   id="fullName"
@@ -2520,6 +2757,49 @@ export default function App() {
                 required
                 error={hasError("ageRange")}
               />
+
+              <div className="rounded-2xl border border-[#C9D5F5] bg-[#F1F5FF] p-4 sm:p-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-[#17399F]">
+                      Quer preencher sua cidade mais rápido?
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">
+                      Use sua localização para sugerir o estado e o município. O navegador consulta
+                      um serviço de localização, mas as coordenadas não entram nas respostas da
+                      pesquisa. Você poderá conferir e corrigir os campos.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={detectResidenceLocation}
+                    disabled={locationStatus === "loading"}
+                    className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#2F55D4] bg-white px-4 py-3 text-sm font-black text-[#1F3FB4] transition hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    <span aria-hidden="true">⌖</span>
+                    {locationStatus === "loading"
+                      ? "Buscando..."
+                      : formData.residenceState
+                        ? "Atualizar localização"
+                        : "Usar minha localização"}
+                  </button>
+                </div>
+                {locationMessage ? (
+                  <p
+                    className={`mt-3 text-sm font-semibold ${
+                      locationStatus === "success"
+                        ? "text-emerald-700"
+                        : locationStatus === "error"
+                          ? "text-red-700"
+                          : "text-slate-600"
+                    }`}
+                    role="status"
+                    aria-live="polite"
+                  >
+                    {locationMessage}
+                  </p>
+                ) : null}
+              </div>
 
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-[220px_1fr]">
                 <SelectField
@@ -2649,26 +2929,53 @@ export default function App() {
               </section>
             ) : null}
 
-            <SelectField
-              id="previousEntrepreneurialArea"
-              label="Você já teve experiência como empreendedor? Em qual área?"
-              value={formData.previousEntrepreneurialArea}
-              options={PREVIOUS_EXPERIENCE_OPTIONS}
-              onChange={(value) => updateField("previousEntrepreneurialArea", value)}
-              required
-              error={hasError("previousEntrepreneurialArea")}
-            />
+            {professionalSituationIsComplete ? (
+              <section className="animate-in fade-in slide-in-from-bottom-2 rounded-2xl border border-[#D8E0F0] bg-white p-5 duration-300 sm:p-6">
+                <SectionHeading
+                  title="Sua experiência como empreendedor"
+                  description="Primeiro, diga se você já teve essa experiência."
+                />
+                <ChoiceCards
+                  id="hadEntrepreneurialExperience"
+                  label="Você já teve experiência como empreendedor?"
+                  value={formData.hadEntrepreneurialExperience}
+                  options={ENTREPRENEURIAL_EXPERIENCE_OPTIONS}
+                  onChange={updateHadEntrepreneurialExperience}
+                  columns="two"
+                  required
+                  error={hasError("hadEntrepreneurialExperience")}
+                />
 
-            {formData.previousEntrepreneurialArea === "outro" ? (
-              <TextField
-                id="previousEntrepreneurialAreaOther"
-                label="Qual foi a outra área?"
-                value={formData.previousEntrepreneurialAreaOther}
-                onChange={(value) => updateField("previousEntrepreneurialAreaOther", value)}
-                placeholder="Digite a área"
-                required
-                error={hasError("previousEntrepreneurialAreaOther")}
-              />
+                {formData.hadEntrepreneurialExperience === "sim" ? (
+                  <div className="mt-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <SelectField
+                      id="previousEntrepreneurialArea"
+                      label="Em qual área foi essa experiência?"
+                      value={formData.previousEntrepreneurialArea}
+                      options={PREVIOUS_EXPERIENCE_OPTIONS}
+                      onChange={(value) => updateField("previousEntrepreneurialArea", value)}
+                      required
+                      error={hasError("previousEntrepreneurialArea")}
+                    />
+
+                    {formData.previousEntrepreneurialArea === "outro" ? (
+                      <div className="mt-5">
+                        <TextField
+                          id="previousEntrepreneurialAreaOther"
+                          label="Qual foi a outra área?"
+                          value={formData.previousEntrepreneurialAreaOther}
+                          onChange={(value) =>
+                            updateField("previousEntrepreneurialAreaOther", value)
+                          }
+                          placeholder="Digite a área"
+                          required
+                          error={hasError("previousEntrepreneurialAreaOther")}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </section>
             ) : null}
           </div>
         );
@@ -3250,6 +3557,16 @@ export default function App() {
             value: `${formData.residenceCity} / ${formData.residenceState}`,
           },
           {
+            label: "Experiência como empreendedor",
+            value:
+              formData.hadEntrepreneurialExperience === "sim"
+                ? `Sim — ${getOptionLabel(
+                    PREVIOUS_EXPERIENCE_OPTIONS,
+                    formData.previousEntrepreneurialArea,
+                  )}`
+                : "Não",
+          },
+          {
             label: "Já fez curso do Sebrae?",
             value: getOptionLabel(COURSE_CONTACT_OPTIONS, formData.courseContact),
           },
@@ -3365,15 +3682,12 @@ export default function App() {
     return (
       <div className="min-h-screen bg-[#F5F7FC] font-sans text-[#071D49]">
         <header className="border-b border-[#D8E0F0] bg-white">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 lg:px-10">
+          <div className="mx-auto flex max-w-7xl items-center px-5 py-4 lg:px-10">
             <img
               src="https://sebrae.com.br/content/dam/portal-sebrae/na/pt/imagens/logo/logo-sebrae.svg"
               alt="Sebrae"
               className="h-8 w-auto sm:h-9"
             />
-            <p className="hidden max-w-3xl text-right text-xs font-bold leading-5 text-[#2F55D4] md:block">
-              Mapeamento de Cadeias Produtivas, Vocações Regionais e Efetividade de Soluções do SEBRAE
-            </p>
           </div>
         </header>
 
@@ -3417,14 +3731,21 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="relative min-h-72 lg:min-h-full">
+              <div className="relative min-h-[360px] overflow-hidden bg-[#2F55D4] lg:min-h-full">
+                <div
+                  className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-[#DFFF7A]/15"
+                  aria-hidden="true"
+                />
+                <div
+                  className="absolute -bottom-14 -left-14 h-44 w-44 rounded-full bg-[#F27AC2]/15"
+                  aria-hidden="true"
+                />
                 <img
                   src={COVER_IMAGE_URL}
-                  alt="Pessoas empreendedoras conversando e trabalhando juntas"
-                  className="absolute inset-0 h-full w-full object-cover"
+                  alt="Empreendedores diversos: uma mulher negra, um jovem e um homem idoso"
+                  className="absolute inset-0 h-full w-full object-contain p-5 sm:p-8 lg:p-10"
                   loading="eager"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#17399F]/45 via-transparent to-transparent lg:bg-gradient-to-r lg:from-[#2F55D4]/35 lg:via-transparent lg:to-transparent" />
               </div>
             </div>
           </section>
