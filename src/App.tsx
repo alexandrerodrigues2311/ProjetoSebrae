@@ -35,7 +35,7 @@ export default function App() {
       setCpfError("");
       setIsCpfValid(true);
     } else {
-      setCpfError("CPF inválido. Por favor, verifique o número digitado.");
+      setCpfError("CPF inválido. Por favor, verifique.");
       setIsCpfValid(false);
     }
   };
@@ -81,7 +81,7 @@ export default function App() {
 
             {isCpfValid && (
               <div className="space-y-6 mt-8 animate-fade-in border-t pt-8">
-                <div><label className="block font-bold mb-1 text-sm">Nome Completo</label><input onChange={(e) => setFormData({...formData, fullName: e.target.value})} placeholder="Como você quer ser chamado?" className="w-full p-4 border rounded-xl" /></div>
+                <div><label className="block font-bold mb-1 text-sm">Nome Completo</label><input onChange={(e) => setFormData({...formData, fullName: e.target.value})} placeholder="Como prefere ser tratada(o)?" className="w-full p-4 border rounded-xl" /></div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div><label className="block font-bold mb-1 text-sm">E-mail</label><input type="email" onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="exemplo@email.com" className="w-full p-4 border rounded-xl" /></div>
@@ -99,7 +99,7 @@ export default function App() {
                       { l: "Não binário", d: "Não se identifica exclusivamente como homem ou como mulher." },
                       { l: "Prefiro não informar", d: "" }
                     ].map(g => (
-                      <button key={g.l} onClick={() => setFormData({...formData, genero: g.l})} className={`p-4 border rounded-xl text-left transition-all ${formData.genero === g.l ? 'bg-blue-50 border-[#005AA5]' : 'hover:bg-gray-50'}`}>
+                      <button key={g.l} onClick={() => setFormData({...formData, genero: g.l})} className={`p-4 border rounded-xl text-left transition-all ${formData.genero === g.l ? 'bg-blue-50 border-[#005AA5]' : 'border-[#005AA5] hover:bg-blue-50'}`}>
                         <div className="font-bold text-sm">{g.l}</div>
                         <div className="text-xs text-gray-500">{g.d}</div>
                       </button>
@@ -111,7 +111,7 @@ export default function App() {
                     <h3 className="font-bold mb-3">Qual sua cor ou raça?</h3>
                     <div className="grid grid-cols-3 gap-2">
                         {["Amarela", "Branca", "Indígena", "Parda", "Preta", "Prefiro não informar"].map(r => (
-                        <button key={r} onClick={() => setFormData({...formData, raca: r})} className={`p-3 border rounded-xl ${formData.raca === r ? 'bg-[#005AA5] text-white' : ''}`}>{r}</button>
+                        <button key={r} onClick={() => setFormData({...formData, raca: r})} className={`p-3 border rounded-xl ${formData.raca === r ? 'bg-[#005AA5] text-white' : 'border-[#005AA5]'}`}>{r}</button>
                         ))}
                     </div>
                 </div>
@@ -120,7 +120,7 @@ export default function App() {
                     <h3 className="font-bold mb-3">Pessoa quilombola?</h3>
                     <div className="flex gap-4">
                         {["Não", "Sim", "Prefiro não informar"].map(q => (
-                            <button key={q} onClick={() => setFormData({...formData, quilombola: q})} className={`flex-1 p-3 border rounded-xl ${formData.quilombola === q ? 'bg-[#005AA5] text-white' : ''}`}>{q}</button>
+                            <button key={q} onClick={() => setFormData({...formData, quilombola: q})} className={`flex-1 p-3 border rounded-xl ${formData.quilombola === q ? 'bg-[#005AA5] text-white' : 'border-[#005AA5]'}`}>{q}</button>
                         ))}
                     </div>
                 </div>
@@ -129,20 +129,20 @@ export default function App() {
                   <h3 className="font-bold mb-3">Pessoa com Deficiência (PcD)?</h3>
                   <div className="flex gap-4">
                     {["Não", "Sim"].map(o => (
-                      <button key={o} onClick={() => setFormData({...formData, pcd: o})} className={`flex-1 p-4 border rounded-xl ${formData.pcd === o ? 'bg-[#005AA5] text-white' : ''}`}>{o}</button>
+                      <button key={o} onClick={() => setFormData({...formData, pcd: o})} className={`flex-1 p-4 border rounded-xl ${formData.pcd === o ? 'bg-[#005AA5] text-white' : 'border-[#005AA5]'}`}>{o}</button>
                     ))}
                   </div>
                   {formData.pcd === 'Sim' && (
                     <div className="grid grid-cols-1 gap-2 mt-4">
                         {["Deficiência Auditiva", "Deficiência Física", "Deficiência Intelectual", "Deficiência Psicossocial", "Deficiência Visual", "Autismo (TEA)", "Prefiro não informar"].map(t => (
-                            <button key={t} onClick={() => setFormData({...formData, tiposPcd: t})} className={`p-3 border rounded-xl ${formData.tiposPcd === t ? 'bg-[#005AA5] text-white' : ''}`}>{t}</button>
+                            <button key={t} onClick={() => setFormData({...formData, tiposPcd: t})} className={`p-3 border rounded-xl ${formData.tiposPcd === t ? 'bg-[#005AA5] text-white' : 'border-[#005AA5]'}`}>{t}</button>
                         ))}
                     </div>
                   )}
                 </div>
 
-                <button onClick={() => alert("Próximo passo")} className="w-full bg-[#005AA5] text-white p-4 rounded-xl font-bold mt-6 shadow-lg hover:scale-[1.02] transition-transform">
-                  Continuar
+                <button onClick={() => alert("Dados prontos para envio")} className="w-full bg-[#005AA5] text-white p-4 rounded-xl font-bold mt-6 shadow-lg hover:scale-[1.02] transition-transform">
+                    Continuar
                 </button>
               </div>
             )}
