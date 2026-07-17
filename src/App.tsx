@@ -19,7 +19,8 @@ import {
 // ==========================================
 // CONFIGURAÇÃO GOOGLE SHEETS
 // ==========================================
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw-xAKrwx_EQlrwEUz1pYoyGf64vHXotEAVkt_titDDyvWczMDxaHz3nJLqNzX_e3Si/exec"; 
+// URL atualizada conforme sua nova implantação:
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw8yWGHJmONTFshN8rqJIhthd_VFvTpRTeV7jPk931Vab6r_lDstn0Pexf2Ea_m3Lwl/exec"; 
 
 // ==========================================
 // BASE DE DADOS E METODOLOGIA (SEBRAE)
@@ -158,7 +159,15 @@ export default function App() {
   const saveData = async () => {
     setIsSaving(true);
     try {
-      const dataToSave = { ...formData, submittedAt: new Date().toISOString() };
+      const dataToSave = {
+        "Data": new Date().toISOString(),
+        "CPF": formData.cpf,
+        "Nome": formData.fullName,
+        "Email": formData.email,
+        "Curso": formData.courseId,
+        "Avaliacoes": JSON.stringify(formData.evaluations)
+      };
+
       await fetch(GOOGLE_SCRIPT_URL, {
         method: "POST",
         mode: "no-cors",
