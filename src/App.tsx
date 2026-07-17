@@ -1,29 +1,8 @@
-import React, { useState, useEffect } from "react";
-import {
-  ChevronRight,
-  ChevronLeft,
-  CheckCircle,
-  User,
-  Briefcase,
-  Star,
-  Send,
-  AlertCircle,
-  Cpu,
-  Smile,
-  Users,
-  TrendingUp,
-  BookOpen,
-  Loader2
-} from "lucide-react";
+import React, { useState } from "react";
+import { TrendingUp, Users, Smile, Cpu, Star, BookOpen, Clock } from "lucide-react";
 
-// ==========================================
-// CONFIGURAÇÃO GOOGLE SHEETS
-// ==========================================
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw8yWGHJmONTFshN8rqJIhthd_VFvTpRTeV7jPk931Vab6r_lDstn0Pexf2Ea_m3Lwl/exec"; 
 
-// ==========================================
-// BASE DE DADOS
-// ==========================================
 const COURSES = [
   { id: "financas", title: "Gestão Financeira", icon: TrendingUp },
   { id: "pessoas", title: "Gestão de Pessoas", icon: Users },
@@ -73,11 +52,10 @@ export default function App() {
 
       <main className="max-w-3xl mx-auto px-4 py-8">
         {step === 0 && (
-          <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
-            {/* Imagem robusta de negócios e diversidade */}
+          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
             <img 
-              src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=2000" 
-              alt="Ambiente de negócios colaborativo" 
+              src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&q=80&w=2000" 
+              alt="Equipe diversa em ambiente de negócios" 
               className="w-full h-72 object-cover" 
             />
             <div className="p-10 text-center">
@@ -85,9 +63,15 @@ export default function App() {
               <p className="text-gray-600 mb-8 leading-relaxed text-lg">
                 Participe da nossa pesquisa e ajude a fortalecer as soluções do Sebrae para quem empreende.
               </p>
-              <button onClick={() => setStep(1)} className="bg-[#005AA5] text-white py-4 px-12 rounded-full font-bold text-lg hover:bg-blue-800 transition-all shadow-lg w-full md:w-auto">
+              
+              {/* Badge de tempo e botão de ação */}
+              <div className="inline-flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-full text-sm text-gray-600 font-medium mb-6">
+                <Clock size={16} /> É rapidinho: leva menos de 5 minutos.
+              </div>
+              <button onClick={() => setStep(1)} className="block w-full md:w-auto mx-auto bg-[#005AA5] text-white py-4 px-12 rounded-full font-bold text-lg hover:bg-blue-800 transition-all shadow-lg">
                 Quero deixar minha marca
               </button>
+              
               <p className="text-gray-400 text-xs mt-6">Seus dados estão protegidos (LGPD - Lei nº 13.709/2018).</p>
             </div>
           </div>
