@@ -1,4 +1,15 @@
-import React, { useState } from "react";
+Para implementar o salvamento de rascunho sem precisar de um banco de dados complexo, a melhor solução é utilizar o `localStorage` do próprio navegador. Assim, se o usuário fechar a aba, atualizar a página ou a internet cair, os dados e a etapa em que ele estava ficam salvos no aparelho dele.
+
+Aproveitei o embalo dos feedbacks da sua equipe (no print do WhatsApp) e já incorporei tudo neste código final:
+
+1. **Rascunho Automático (localStorage):** O progresso é salvo a cada clique. Se o usuário voltar, ele continua de onde parou. O rascunho é limpo automaticamente após o envio final.
+2. **Obrigatoriedade (Marco):** A trava foi adicionada. O botão "Continuar" só fica azul e clicável quando **todas** as perguntas daquela tela forem respondidas (tanto dados pessoais quanto as perguntas da escala Likert).
+3. **Múltiplos Cursos (Fernanda):** O código agora lê todos os cursos que o usuário marcou. Se ele marcou 3 cursos, o sistema vai gerar as 3 telas de blocos específicos em sequência antes de finalizar.
+
+Aqui está o **código completo e absoluto** com todas as melhorias de UX e metodológicas aplicadas. Substitua todo o conteúdo do seu `App.tsx`:
+
+```tsx
+import React, { useState, useEffect } from "react";
 import { Clock, AlertCircle, TrendingUp, Users, Smile, Cpu, Star, PlusCircle, CheckCircle2 } from "lucide-react";
 
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw8yWGHJmONTFshN8rqJIhthd_VFvTpRTeV7jPk931Vab6r_lDstn0Pexf2Ea_m3Lwl/exec"; 
@@ -25,14 +36,36 @@ const COMMON_BLOCKS = [
 const LIKERT = ["Discordo totalmente", "Discordo parcialmente", "Nem concordo, nem discordo", "Concordo parcialmente", "Concordo totalmente", "Não se aplica à minha realidade"];
 
 export default function App() {
-  const [step, setStep] = useState(0);
-  const [formData, setFormData] = useState({ 
-    cpf: "", fullName: "", email: "", phone: "", 
-    genero: "", raca: "", quilombola: "", pcd: "", tiposPcd: [] as string[], 
-    cursos: [] as string[], responses: {} as Record<string, number> 
+  // Inicialização com LocalStorage (Rascunho)
+  const [step, setStep] = useState(() => {
+    const savedStep = localStorage.getItem('sebrae_step');
+    return savedStep ? parseInt(savedStep, 10) : 0;
   });
+
+  const [formData, setFormData] = useState(() => {
+    const savedData = localStorage.getItem('sebrae_data');
+    return savedData ? JSON.parse(savedData) : { 
+      cpf: "", fullName: "", email: "", phone: "", 
+      genero: "", raca: "", quilombola: "", pcd: "", tiposPcd: [] as string[], 
+      cursos: [] as string[], responses: {} as Record<string, number> 
+    };
+  });
+
   const [cpfError, setCpfError] = useState("");
-  const [isCpfValid, setIsCpfValid] = useState(false);
+  const [isCpfValid, setIsCpfValid] = useState(() => {
+    const savedStep = localStorage.getItem('sebrae_step');
+    return savedStep && parseInt(savedStep, 10) > 1 ? true : false;
+  });
+
+  // Salvar no LocalStorage sempre que houver mudança
+  useEffect(() => {
+    if (step !== 99) {
+      localStorage.setItem('sebrae_step', step.toString());
+      localStorage.setItem('sebrae_data', JSON.stringify(formData));
+    }
+  }, [step, formData]);
+
+  const specificCourses = formData.cursos.filter(c => c !== 'outros');
 
   const validateCPF = (cpf: string) => {
     const clean = cpf.replace(/[^\d]+/g, '');
@@ -59,8 +92,21 @@ export default function App() {
     }
   };
 
-  const isFormValid = () => {
-    return formData.fullName && formData.email && formData.phone && formData.genero && formData.raca && formData.quilombola && formData.pcd;
+  // Trava de Obrigatoriedade (Valida se o bloco atual está 100% preenchido)
+  const canAdvanceStep = () => {
+    if (step === 1) return formData.fullName && formData.email && formData.phone && formData.genero && formData.raca && formData.quilombola && formData.pcd && (formData.pcd === 'Não' || formData.tiposPcd.length > 0);
+    if (step === 2) return formData.cursos.length > 0;
+    if (step >= 3 && step <= 7) {
+      const blockIndex = step - 3;
+      return COMMON_BLOCKS[blockIndex].questions.every((_, i) => formData.responses[`${COMMON_BLOCKS[blockIndex].id}_${i}`]);
+    }
+    if (step >= 8 && step < 8 + specificCourses.length) {
+      const courseIndex = step - 8;
+      const courseId = specificCourses[courseIndex];
+      const course = COURSES.find(c => c.id === courseId);
+      return course?.questions.every((_, i) => formData.responses[`SPECIFIC_${courseId}_${i}`]);
+    }
+    return true;
   };
 
   const saveData = async () => {
@@ -71,9 +117,21 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...formData, timestamp: new Date().toISOString() }) 
       });
+      // Limpar rascunho após o envio bem-sucedido
+      localStorage.removeItem('sebrae_step');
+      localStorage.removeItem('sebrae_data');
       setStep(99);
     } catch (e) { 
       alert("Erro ao enviar. Verifique sua conexão e tente novamente."); 
+    }
+  };
+
+  const handleNextStep = () => {
+    // Se estiver no último bloco específico (ou no bloco 7 se não houver cursos específicos)
+    if (step === 7 + specificCourses.length || (step === 7 && specificCourses.length === 0)) {
+      saveData();
+    } else {
+      setStep(step + 1);
     }
   };
 
@@ -109,8 +167,15 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-8">
+      <main className="max-w-2xl mx-auto px-4 py-8 relative">
         
+        {/* Aviso de Rascunho */}
+        {step > 0 && step < 99 && (
+          <div className="absolute top-0 right-4 text-[10px] text-gray-400 flex items-center gap-1">
+            <Clock size={10} /> Rascunho salvo automaticamente
+          </div>
+        )}
+
         {/* CAPA - STEP 0 */}
         {step === 0 && (
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100 animate-in zoom-in duration-500">
@@ -124,7 +189,7 @@ export default function App() {
                 <Clock size={16} /> É rapidinho: leva menos de 5 minutos.
               </div>
               <button onClick={() => setStep(1)} className="block w-full md:w-auto mx-auto bg-[#005AA5] text-white py-4 px-12 rounded-full font-bold text-lg hover:bg-blue-800 transition-all shadow-lg">
-                Quero deixar minha marca
+                {formData.cpf ? "Continuar de onde parei" : "Quero deixar minha marca"}
               </button>
             </div>
           </div>
@@ -150,12 +215,12 @@ export default function App() {
                 <h2 className="text-2xl font-bold text-[#005AA5]">Sobre Você</h2>
                 <div>
                   <label className="block font-bold mb-1 text-sm">Nome Completo</label>
-                  <input onChange={(e) => setFormData({...formData, fullName: e.target.value})} placeholder="Como prefere ser tratada(o)?" className="w-full p-4 border rounded-xl" />
+                  <input value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} placeholder="Como prefere ser tratada(o)?" className="w-full p-4 border rounded-xl" />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block font-bold mb-1 text-sm">E-mail</label>
-                    <input type="email" onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="exemplo@dominio.com" className="w-full p-4 border rounded-xl" />
+                    <input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="exemplo@dominio.com" className="w-full p-4 border rounded-xl" />
                   </div>
                   <div>
                     <label className="block font-bold mb-1 text-sm">Telefone / WhatsApp</label>
@@ -163,7 +228,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* IDENTIDADE */}
                 <div className="border-t pt-6">
                   <h3 className="font-bold mb-4 text-lg">Identidade de Gênero</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -180,7 +244,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* RAÇA/COR */}
                 <div className="border-t pt-6">
                   <h3 className="font-bold mb-3">Qual sua cor ou raça?</h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
@@ -190,7 +253,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* QUILOMBOLA */}
                 <div className="border-t pt-6">
                   <h3 className="font-bold mb-3">Pessoa quilombola?</h3>
                   <div className="flex gap-4">
@@ -200,7 +262,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* PcD */}
                 <div className="border-t pt-6">
                   <h3 className="font-bold mb-3">Pessoa com Deficiência (PcD)?</h3>
                   <div className="flex gap-4">
@@ -218,7 +279,7 @@ export default function App() {
                 </div>
 
                 <div className="pt-6">
-                  <button onClick={() => setStep(2)} disabled={!isFormValid()} className={`w-full p-4 rounded-xl font-bold transition-all ${isFormValid() ? 'bg-[#005AA5] text-white shadow-lg hover:bg-blue-800' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>
+                  <button onClick={() => setStep(2)} disabled={!canAdvanceStep()} className={`w-full p-4 rounded-xl font-bold transition-all ${canAdvanceStep() ? 'bg-[#005AA5] text-white shadow-lg hover:bg-blue-800' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>
                     Continuar
                   </button>
                 </div>
@@ -243,7 +304,7 @@ export default function App() {
                 <span className="font-bold text-sm">Outros</span>
               </button>
             </div>
-            <button onClick={() => setStep(3)} disabled={formData.cursos.length === 0} className={`w-full p-4 rounded-xl font-bold transition-all ${formData.cursos.length > 0 ? 'bg-[#005AA5] text-white shadow-lg hover:bg-blue-800' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>
+            <button onClick={() => setStep(3)} disabled={!canAdvanceStep()} className={`w-full p-4 rounded-xl font-bold transition-all ${canAdvanceStep() ? 'bg-[#005AA5] text-white shadow-lg hover:bg-blue-800' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>
               Continuar
             </button>
           </div>
@@ -255,33 +316,24 @@ export default function App() {
             <h2 className="text-2xl font-bold mb-6 text-[#005AA5] bg-white p-4 rounded-2xl shadow-sm border">{COMMON_BLOCKS[step - 3].title}</h2>
             {COMMON_BLOCKS[step - 3].questions.map((q, i) => renderLikert(`${COMMON_BLOCKS[step - 3].id}_${i}`, q))}
             
-            <button onClick={() => setStep(step + 1)} className="w-full bg-[#005AA5] text-white p-4 rounded-xl font-bold shadow-lg hover:bg-blue-800 transition-all">
-              Continuar
+            <button onClick={handleNextStep} disabled={!canAdvanceStep()} className={`w-full p-4 rounded-xl font-bold transition-all ${canAdvanceStep() ? 'bg-[#005AA5] text-white shadow-lg hover:bg-blue-800' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>
+              {(step === 7 && specificCourses.length === 0) ? "Enviar" : "Continuar"}
             </button>
           </div>
         )}
 
-        {/* BLOCO ESPECÍFICO DE CURSO - STEP 8 */}
-        {step === 8 && (
+        {/* BLOCOS ESPECÍFICOS DE CURSO (Renderiza de acordo com o número de cursos selecionados) */}
+        {step >= 8 && step < 8 + specificCourses.length && (
           <div className="animate-in slide-in-from-right duration-500">
-            <h2 className="text-2xl font-bold mb-6 text-[#005AA5] bg-white p-4 rounded-2xl shadow-sm border">Sobre o curso realizado</h2>
+            <h2 className="text-2xl font-bold mb-6 text-[#005AA5] bg-white p-4 rounded-2xl shadow-sm border">
+              Sobre o curso: {COURSES.find(c => c.id === specificCourses[step - 8])?.title}
+            </h2>
             
-            {formData.cursos.length > 0 && COURSES.find(c => c.id === formData.cursos[0]) ? (
-              <>
-                {COURSES.find(c => c.id === formData.cursos[0])?.questions.map((q, i) => renderLikert(`SPECIFIC_${formData.cursos[0]}_${i}`, q))}
-                <button onClick={saveData} className="w-full bg-green-600 text-white p-4 rounded-xl font-bold shadow-lg hover:bg-green-700 transition-all">
-                  Enviar
-                </button>
-              </>
-            ) : (
-              <div className="bg-white p-8 rounded-2xl shadow-sm border text-center mb-8 text-gray-600">
-                <p className="mb-6">Você selecionou cursos que não possuem questões específicas nesta etapa. Você já pode enviar sua pesquisa.</p>
-                <button onClick={saveData} className="w-full bg-green-600 text-white p-4 rounded-xl font-bold shadow-lg hover:bg-green-700 transition-all">
-                  Enviar
-                </button>
-              </div>
-            )}
+            {COURSES.find(c => c.id === specificCourses[step - 8])?.questions.map((q, i) => renderLikert(`SPECIFIC_${specificCourses[step - 8]}_${i}`, q))}
             
+            <button onClick={handleNextStep} disabled={!canAdvanceStep()} className={`w-full p-4 rounded-xl font-bold transition-all ${canAdvanceStep() ? (step === 7 + specificCourses.length ? 'bg-green-600 hover:bg-green-700' : 'bg-[#005AA5] hover:bg-blue-800') : 'bg-gray-300 text-gray-500 cursor-not-allowed'} text-white shadow-lg`}>
+              {step === 7 + specificCourses.length ? "Enviar" : "Continuar"}
+            </button>
           </div>
         )}
 
@@ -300,3 +352,5 @@ export default function App() {
     </div>
   );
 }
+
+```
