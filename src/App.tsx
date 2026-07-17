@@ -18,18 +18,17 @@ import {
  * - Tailwind CSS
  * - lucide-react
  *
- * O endpoint foi preservado do código original. Como o envio usa mode="no-cors",
- * o navegador não consegue ler a resposta do Google Apps Script. O código considera
- * o envio concluído quando a requisição é aceita pelo navegador sem erro de rede.
+ * O envio passa por uma função da Vercel em /api/submit.
+ * Assim, o formulário só confirma o envio depois que o Google Apps Script
+ * informa que a resposta foi registrada.
  */
 
-const GOOGLE_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbw8yWGHJmONTFshN8rqJIhthd_VFvTpRTeV7jPk931Vab6r_lDstn0Pexf2Ea_m3Lwl/exec";
+const SURVEY_SUBMIT_URL = "/api/submit";
 
 const SURVEY_VERSION =
-  "sebrae-2026-nucleo-comum-customizado-v7-mobile-imagem-incorporada";
+  "sebrae-2026-nucleo-comum-customizado-v8-automacao-planilha";
 const DRAFT_KEY =
-  "sebrae_questionario_2026_draft_v7_mobile_imagem_incorporada";
+  "sebrae_questionario_2026_draft_v8_automacao_planilha";
 const SEBRAE_LGPD_URL = "https://sebrae.com.br/subsites/lgpd";
 
 /**
@@ -2318,23 +2317,39 @@ export default function App() {
             ? "online"
             : "presencial";
       const normalizedOnlineCourses = hasOnlineCourseContact ? formData.onlineCourses : [];
-      const legacyCourses = normalizedOnlineCourses.map((courseId) =>
-        courseId === "outro" ? "outros" : courseId,
-      );
       const activeResponseLabels = Object.fromEntries(
         Object.entries(activeResponses).map(([id, response]) => [
           id,
-          LIKERT_7_WITH_NA_SCALE.find((option) => option.value === response)?.label ?? String(response),
+          LIKERT_7_WITH_NA_SCALE.find((option) => option.value === response)?.label ??
+            String(response),
         ]),
       );
 
+      /**
+       * O payload é montado por uma lista explícita.
+       * Assim, campos antigos, auxiliares ou não coletados não são enviados
+       * por engano ao Google Apps Script.
+       */
       const payload = {
-        ...formData,
+        cpf: formData.cpf,
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+
+        gender: formData.gender,
+        genderOther: formData.gender === "outro" ? formData.genderOther : "",
+        ageRange: formData.ageRange,
+        residenceState: formData.residenceState,
+        residenceCity: formData.residenceCity,
+
+        professionalCategory: formData.professionalCategory,
         professionalArea: isWorkingToday ? formData.professionalArea : "",
-        professionalAreaOther: isWorkingToday ? formData.professionalAreaOther : "",
+        professionalAreaOther:
+          isWorkingToday && formData.professionalArea === "outro"
+            ? formData.professionalAreaOther
+            : "",
         yearsInCurrentArea: isWorkingToday ? formData.yearsInCurrentArea : "",
         hadEntrepreneurialExperience: formData.hadEntrepreneurialExperience,
-        entrepreneurialExperience: formData.hadEntrepreneurialExperience,
         previousEntrepreneurialArea:
           formData.hadEntrepreneurialExperience === "sim"
             ? formData.previousEntrepreneurialArea
@@ -2344,9 +2359,8 @@ export default function App() {
           formData.previousEntrepreneurialArea === "outro"
             ? formData.previousEntrepreneurialAreaOther
             : "",
-        courseExperience: formData.courseContact,
-        courseContact: normalizedCourseContact,
-        courseFormats: hasCourse ? formData.courseFormats : [],
+
+        respondentType: isPJ ? "PJ" : "PF",
         companySize:
           isPJ && formData.professionalCategory === "pj_mei"
             ? "mei"
@@ -2354,76 +2368,102 @@ export default function App() {
               ? formData.companySize
               : "",
         companyOperatingTime: isPJ ? formData.companyOperatingTime : "",
-        companyOperatingTimeOther: isPJ ? formData.companyOperatingTimeOther : "",
+        companyOperatingTimeOther:
+          isPJ && formData.companyOperatingTime === "outro"
+            ? formData.companyOperatingTimeOther
+            : "",
         companyLocationType: isPJ ? formData.companyLocationType : "",
-        companyCity:
-          isPJ && formData.companyLocationType === "fisica" ? formData.companyCity : "",
         companyState:
-          isPJ && formData.companyLocationType === "fisica" ? formData.companyState : "",
+          isPJ && formData.companyLocationType === "fisica"
+            ? formData.companyState
+            : "",
+        companyCity:
+          isPJ && formData.companyLocationType === "fisica"
+            ? formData.companyCity
+            : "",
         companySegment: isPJ ? formData.companySegment : "",
-        companySegmentOther: isPJ ? formData.companySegmentOther : "",
+        companySegmentOther:
+          isPJ && formData.companySegment === "outro"
+            ? formData.companySegmentOther
+            : "",
         employeeCount: isPJ ? formData.employeeCount : "",
         revenueRange: isPJ ? formData.revenueRange : "",
         salesChannels: isPJ ? formData.salesChannels : [],
-        salesChannelOther: isPJ ? formData.salesChannelOther : "",
+        salesChannelOther:
+          isPJ && formData.salesChannels.includes("outro")
+            ? formData.salesChannelOther
+            : "",
+
+        courseContact: normalizedCourseContact,
+        courseFormats: hasCourse ? formData.courseFormats : [],
         onlineCourses: normalizedOnlineCourses,
-        onlineCourseOther: "",
-        presencialCourse: hasPresencialCourseContact ? formData.presencialCourse : "",
+        presencialCourse:
+          hasCourse && hasPresencialCourseContact ? formData.presencialCourse : "",
+        selectedCourseTitles: hasCourse ? selectedCourseNames : [],
         courseReasons: hasCourse ? formData.courseReasons : [],
-        courseReasonOther: hasCourse ? formData.courseReasonOther : "",
+        courseReasonOther:
+          hasCourse && formData.courseReasons.includes("outro")
+            ? formData.courseReasonOther
+            : "",
+
         changesMade: hasCourse ? formData.changesMade : [],
-        changesMadeOther: hasCourse ? formData.changesMadeOther : "",
+        changesMadeOther:
+          hasCourse && formData.changesMade.includes("outro")
+            ? formData.changesMadeOther
+            : "",
         affectedAreas: hasCourse && isPJ ? formData.affectedAreas : [],
-        affectedAreasOther: hasCourse && isPJ ? formData.affectedAreasOther : "",
-        applicationDifficulties: hasCourse ? formData.applicationDifficulties : [],
-        applicationDifficultiesOther: hasCourse
-          ? formData.applicationDifficultiesOther
-          : "",
+        affectedAreasOther:
+          hasCourse && isPJ && formData.affectedAreas.includes("outro")
+            ? formData.affectedAreasOther
+            : "",
+        applicationDifficulties:
+          hasCourse ? formData.applicationDifficulties : [],
+        applicationDifficultiesOther:
+          hasCourse && formData.applicationDifficulties.includes("outro")
+            ? formData.applicationDifficultiesOther
+            : "",
         supportNeeds: hasCourse ? formData.supportNeeds : [],
-        supportNeedsOther: hasCourse ? formData.supportNeedsOther : "",
+        supportNeedsOther:
+          hasCourse && formData.supportNeeds.includes("outro")
+            ? formData.supportNeedsOther
+            : "",
+
         responses: activeResponses,
         responseLabels: activeResponseLabels,
-        responseScale: {
-          type: "Likert de concordância",
-          points: 7,
-          notApplicableValue: "NA",
-          options: LIKERT_7_WITH_NA_SCALE.map((option) => ({
-            value: option.value,
-            label: option.label,
-          })),
-        },
-
-        // Campos de compatibilidade com o payload do código anterior.
-        genero: formData.gender,
-        cursos: legacyCourses,
-        raca: "",
-        quilombola: "",
-        pcd: "",
-        tiposPcd: [],
+        reviewConfirmed: formData.reviewConfirmed,
 
         questionnaireVersion: SURVEY_VERSION,
-        respondentType: isPJ ? "PJ" : "PF",
-        selectedCourseTitles: selectedCourseNames,
-        firstName,
         startedAt,
         timestamp: new Date().toISOString(),
       };
 
-      await fetch(GOOGLE_SCRIPT_URL, {
+      const response = await fetch(SURVEY_SUBMIT_URL, {
         method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
         keepalive: true,
       });
+
+      const result = (await response.json().catch(() => null)) as
+        | { status?: string; message?: string; submissionId?: string }
+        | null;
+
+      if (!response.ok || result?.status !== "sucesso") {
+        throw new Error(
+          result?.message ||
+            "A resposta não foi confirmada pelo serviço de armazenamento.",
+        );
+      }
 
       if (typeof window !== "undefined") window.sessionStorage.removeItem(DRAFT_KEY);
       setHasDraft(false);
       setSubmitted(true);
       setStarted(false);
-    } catch {
+    } catch (error) {
       setSubmitError(
-        "Não foi possível enviar agora. Verifique sua conexão e tente novamente.",
+        error instanceof Error && error.message
+          ? error.message
+          : "Não foi possível enviar agora. Verifique sua conexão e tente novamente.",
       );
     } finally {
       setIsSubmitting(false);
