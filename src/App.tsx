@@ -43,11 +43,11 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-      {/* Cabeçalho centralizado em tom de azul Sebrae */}
-      <header className="bg-[#005AA5] border-b border-blue-700 py-4 px-6 shadow-md sticky top-0 z-50 text-white">
-        <div className="max-w-5xl mx-auto flex flex-col items-center gap-2">
-          <img src="https://sebrae.com.br/content/dam/portal-sebrae/na/pt/imagens/logo/logo-sebrae.svg" alt="Sebrae" className="h-8 brightness-0 invert" />
-          <h1 className="font-bold text-xs uppercase tracking-widest text-center">
+      {/* Cabeçalho Ajustado */}
+      <header className="bg-white border-b border-gray-200 py-4 px-6 sticky top-0 z-50">
+        <div className="max-w-5xl mx-auto grid grid-cols-[120px_1fr] items-center">
+          <img src="https://sebrae.com.br/content/dam/portal-sebrae/na/pt/imagens/logo/logo-sebrae.svg" alt="Sebrae" className="h-8" />
+          <h1 className="text-[#005AA5] font-bold text-sm uppercase text-center pr-[120px]">
             Mapeamento de Cadeias Produtivas, Vocações Regionais e Efetividade das Soluções do Sebrae
           </h1>
         </div>
@@ -57,19 +57,21 @@ export default function App() {
         {step === 0 && (
           <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
             <img 
-              src="https://images.unsplash.com/photo-1529070538774-1843bc3265d4?auto=format&fit=crop&q=80&w=2000" 
-              alt="Empreendedores focados no futuro" 
+              src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=2000" 
+              alt="Empreendedores focados" 
               className="w-full h-72 object-cover object-center" 
             />
             <div className="p-10 text-center">
-              <h2 className="text-2xl font-black text-gray-800 mb-6">Sua participação fortalece o empreendedorismo brasileiro.</h2>
+              <h2 className="text-3xl font-black text-gray-800 mb-4">Sua história inspira o futuro.</h2>
+              <p className="text-gray-600 mb-8 leading-relaxed text-lg">
+                Participe da nossa pesquisa e ajude a fortalecer as soluções do Sebrae para quem empreende. Sua voz é o motor da nossa inovação.
+              </p>
               
-              <div className="inline-flex items-center gap-2 bg-blue-50 text-[#005AA5] px-4 py-2 rounded-full text-sm font-bold mb-6">
-                <Clock size={16} /> Pesquisa rápida: menos de 5 minutos.
+              <div className="inline-flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-full text-sm text-gray-600 font-medium mb-6">
+                <Clock size={16} /> É rapidinho: leva menos de 5 minutos.
               </div>
-              
               <button onClick={() => setStep(1)} className="block w-full md:w-auto mx-auto bg-[#005AA5] text-white py-4 px-12 rounded-full font-bold text-lg hover:bg-blue-800 transition-all shadow-lg">
-                Participe da nossa pesquisa
+                Quero deixar minha marca
               </button>
               
               <p className="text-gray-400 text-xs mt-6">Seus dados estarão protegidos pelo Sebrae (LGPD - Lei nº 13.709/2018).</p>
