@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Clock,
   Cpu,
-  PlusCircle,
   Smile,
   Star,
   TrendingUp,
@@ -12,7 +11,7 @@ import {
 } from "lucide-react";
 
 /**
- * Questionário Sebrae 2026
+ * Mapeamento de Cadeias Produtivas, Vocações Regionais e Efetividade de Soluções do SEBRAE
  *
  * Dependências esperadas no projeto:
  * - React
@@ -27,8 +26,11 @@ import {
 const GOOGLE_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbw8yWGHJmONTFshN8rqJIhthd_VFvTpRTeV7jPk931Vab6r_lDstn0Pexf2Ea_m3Lwl/exec";
 
-const SURVEY_VERSION = "sebrae-2026-nucleo-comum-customizado-v4-likert-7";
-const DRAFT_KEY = "sebrae_questionario_2026_draft_v4_likert_7";
+const SURVEY_VERSION = "sebrae-2026-nucleo-comum-customizado-v5-ux-sebrae";
+const DRAFT_KEY = "sebrae_questionario_2026_draft_v5_ux_sebrae";
+const SEBRAE_LGPD_URL = "https://sebrae.com.br/subsites/lgpd";
+const COVER_IMAGE_URL =
+  "https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1600&q=85";
 
 type IconComponent = typeof AlertCircle;
 
@@ -44,6 +46,7 @@ type PageKind =
   | "course-evaluation"
   | "before-course"
   | "application-practice"
+  | "application-changes"
   | "application-areas"
   | "application-difficulties"
   | "application-support"
@@ -122,6 +125,7 @@ interface SurveyFormData {
   salesChannelOther: string;
 
   courseContact: string;
+  courseFormats: string[];
   onlineCourses: string[];
   onlineCourseOther: string;
   presencialCourse: string;
@@ -186,6 +190,7 @@ const createEmptyForm = (): SurveyFormData => ({
   salesChannelOther: "",
 
   courseContact: "",
+  courseFormats: [],
   onlineCourses: [],
   onlineCourseOther: "",
   presencialCourse: "",
@@ -254,6 +259,20 @@ const validateEmail = (email: string) =>
 
 const isFilled = (value: string) => value.trim().length > 0;
 
+const NON_WORKING_CATEGORY_IDS = ["pf_estudante", "pf_desempregado"];
+
+const worksToday = (professionalCategory: string) =>
+  Boolean(professionalCategory) &&
+  !NON_WORKING_CATEGORY_IDS.includes(professionalCategory);
+
+const getFirstName = (fullName: string) => {
+  const first = fullName.trim().split(/\s+/)[0] || "";
+  if (!first) return "";
+  return `${first.charAt(0).toLocaleUpperCase("pt-BR")}${first
+    .slice(1)
+    .toLocaleLowerCase("pt-BR")}`;
+};
+
 const toggleArrayValue = (
   current: string[],
   value: string,
@@ -282,14 +301,22 @@ const LIKERT_7_WITH_NA_SCALE: ScaleOption[] = [
 ];
 
 const PROFESSIONAL_CATEGORY_OPTIONS: OptionItem[] = [
-  { value: "pf_autonomo", label: "Pessoa Física — autônomo" },
-  { value: "pf_liberal", label: "Pessoa Física — profissional liberal" },
-  { value: "pf_empregado_formal", label: "Pessoa Física — empregado formal" },
-  { value: "pf_empregado_informal", label: "Pessoa Física — empregado informal" },
-  { value: "pf_estudante", label: "Pessoa Física — estudante" },
-  { value: "pf_desempregado", label: "Pessoa Física — desempregado" },
-  { value: "pj_mei", label: "Pessoa Jurídica — MEI" },
-  { value: "pj_outros", label: "Pessoa Jurídica — outros" },
+  { value: "pf_autonomo", label: "Trabalho por conta própria" },
+  { value: "pf_liberal", label: "Sou profissional liberal" },
+  { value: "pf_empregado_formal", label: "Trabalho com carteira assinada" },
+  { value: "pf_empregado_informal", label: "Trabalho sem carteira assinada" },
+  { value: "pf_estudante", label: "Sou estudante e não trabalho" },
+  { value: "pf_desempregado", label: "No momento, não estou trabalhando" },
+  {
+    value: "pj_mei",
+    label: "Sou MEI",
+    description: "Meu negócio tem CNPJ de Microempreendedor Individual.",
+  },
+  {
+    value: "pj_outros",
+    label: "Tenho uma empresa que não é MEI",
+    description: "Meu negócio tem outro tipo de CNPJ.",
+  },
 ];
 
 const PROFESSIONAL_AREA_OPTIONS: OptionItem[] = [
@@ -299,13 +326,11 @@ const PROFESSIONAL_AREA_OPTIONS: OptionItem[] = [
   { value: "servicos", label: "Serviços" },
   { value: "setor_publico", label: "Setor público" },
   { value: "tecnologia_inovacao", label: "Tecnologia e inovação" },
-  { value: "economia_criativa", label: "Economia criativa (design, moda, audiovisual, artes etc.)" },
-  { value: "turismo_gastronomia", label: "Turismo, Gastronomia e Hospitalidade" },
-  { value: "educacao_pesquisa", label: "Educação e Pesquisa" },
-  { value: "profissional_liberal", label: "Profissional liberal/autônomo" },
-  { value: "estudante", label: "Estudante" },
-  { value: "nao_atuo", label: "Ainda não atuo profissionalmente" },
-  { value: "outro", label: "Outro" },
+  { value: "economia_criativa", label: "Economia criativa" },
+  { value: "turismo_gastronomia", label: "Turismo, gastronomia e hospitalidade" },
+  { value: "educacao_pesquisa", label: "Educação e pesquisa" },
+  { value: "profissional_liberal", label: "Atividade profissional liberal" },
+  { value: "outro", label: "Outra área" },
 ];
 
 const PREVIOUS_EXPERIENCE_OPTIONS: OptionItem[] = [
@@ -316,10 +341,10 @@ const PREVIOUS_EXPERIENCE_OPTIONS: OptionItem[] = [
   { value: "setor_publico", label: "Setor público" },
   { value: "tecnologia_inovacao", label: "Tecnologia e inovação" },
   { value: "economia_criativa", label: "Economia criativa (design, moda, audiovisual, artes etc.)" },
-  { value: "turismo_gastronomia", label: "Turismo, Gastronomia e Hospitalidade" },
-  { value: "educacao_pesquisa", label: "Educação e Pesquisa" },
-  { value: "profissional_liberal", label: "Profissional liberal/autônomo" },
-  { value: "sem_experiencia", label: "Não tive experiência empreendedora antes" },
+  { value: "turismo_gastronomia", label: "Turismo, gastronomia e hospitalidade" },
+  { value: "educacao_pesquisa", label: "Educação e pesquisa" },
+  { value: "profissional_liberal", label: "Atividade profissional liberal" },
+  { value: "sem_experiencia", label: "Nunca tive experiência como empreendedor" },
   { value: "outro", label: "Outro" },
 ];
 
@@ -411,10 +436,21 @@ const SALES_CHANNEL_OPTIONS: OptionItem[] = [
 ];
 
 const COURSE_CONTACT_OPTIONS: OptionItem[] = [
-  { value: "online", label: "Sim, curso online" },
-  { value: "presencial", label: "Sim, curso presencial" },
-  { value: "ambos", label: "Sim, cursos online e presenciais" },
-  { value: "nenhum", label: "Não tive contato com nenhum curso do Sebrae" },
+  { value: "sim", label: "Sim" },
+  { value: "nenhum", label: "Não" },
+];
+
+const COURSE_FORMAT_OPTIONS: OptionItem[] = [
+  {
+    value: "online",
+    label: "Online",
+    description: "Fiz o curso pela internet.",
+  },
+  {
+    value: "presencial",
+    label: "Presencial",
+    description: "Participei do curso em um local físico.",
+  },
 ];
 
 const COURSE_REASON_OPTIONS: OptionItem[] = [
@@ -1058,6 +1094,7 @@ const readStoredDraft = (): StoredDraft | null => {
         ...parsed.data,
         responses: parsed.data.responses || {},
         salesChannels: parsed.data.salesChannels || [],
+        courseFormats: parsed.data.courseFormats || [],
         onlineCourses: parsed.data.onlineCourses || [],
         courseReasons: parsed.data.courseReasons || [],
         changesMade: parsed.data.changesMade || [],
@@ -1092,54 +1129,61 @@ const getMissingItems = (
   switch (page.kind) {
     case "identification": {
       add(!validateCPF(data.cpf), "cpf", "Informe um CPF válido");
-      add(!isFilled(data.fullName), "fullName", "Informe o nome completo");
-      add(Boolean(data.email) && !validateEmail(data.email), "email", "Revise o e-mail informado");
+      add(!isFilled(data.fullName), "fullName", "Informe seu nome completo");
+      add(!validateEmail(data.email), "email", "Informe um e-mail válido");
       add(
-        Boolean(data.phone) && data.phone.replace(/\D/g, "").length < 10,
+        data.phone.replace(/\D/g, "").length < 10,
         "phone",
-        "Revise o telefone informado",
+        "Informe um telefone válido",
       );
-      break;
-    }
-
-    case "participant-profile": {
-      add(!data.professionalCategory, "professionalCategory", "Escolha como você trabalha hoje");
-      add(!data.professionalArea, "professionalArea", "Escolha sua área de trabalho");
-      add(
-        data.professionalArea === "outro" && !isFilled(data.professionalAreaOther),
-        "professionalAreaOther",
-        "Informe a outra área de trabalho",
-      );
-      const requiresYears = !["estudante", "nao_atuo"].includes(data.professionalArea);
-      add(
-        requiresYears && !isFilled(data.yearsInCurrentArea),
-        "yearsInCurrentArea",
-        "Informe há quanto tempo você está nessa área",
-      );
-      add(
-        !data.previousEntrepreneurialArea,
-        "previousEntrepreneurialArea",
-        "Escolha sua experiência empreendedora anterior",
-      );
-      add(
-        data.previousEntrepreneurialArea === "outro" &&
-          !isFilled(data.previousEntrepreneurialAreaOther),
-        "previousEntrepreneurialAreaOther",
-        "Informe a experiência empreendedora anterior",
-      );
-      add(!data.residenceState, "residenceState", "Escolha o estado de residência");
-      add(
-        Boolean(data.residenceState) && !isFilled(data.residenceCity),
-        "residenceCity",
-        "Escolha o município de residência",
-      );
-      add(!data.gender, "gender", "Escolha o gênero");
+      add(!data.gender, "gender", "Escolha seu gênero");
       add(
         data.gender === "outro" && !isFilled(data.genderOther),
         "genderOther",
         "Informe como prefere descrever seu gênero",
       );
-      add(!data.ageRange, "ageRange", "Escolha sua idade");
+      add(!data.ageRange, "ageRange", "Escolha sua faixa de idade");
+      add(!data.residenceState, "residenceState", "Escolha seu estado");
+      add(
+        Boolean(data.residenceState) && !isFilled(data.residenceCity),
+        "residenceCity",
+        "Escolha seu município",
+      );
+      break;
+    }
+
+    case "participant-profile": {
+      add(
+        !data.professionalCategory,
+        "professionalCategory",
+        "Escolha a opção que melhor descreve você hoje",
+      );
+
+      if (worksToday(data.professionalCategory)) {
+        add(!data.professionalArea, "professionalArea", "Escolha sua área de trabalho");
+        add(
+          data.professionalArea === "outro" && !isFilled(data.professionalAreaOther),
+          "professionalAreaOther",
+          "Informe a outra área de trabalho",
+        );
+        add(
+          !isFilled(data.yearsInCurrentArea),
+          "yearsInCurrentArea",
+          "Informe há quanto tempo você está nessa área",
+        );
+      }
+
+      add(
+        !data.previousEntrepreneurialArea,
+        "previousEntrepreneurialArea",
+        "Informe se você já teve experiência como empreendedor",
+      );
+      add(
+        data.previousEntrepreneurialArea === "outro" &&
+          !isFilled(data.previousEntrepreneurialAreaOther),
+        "previousEntrepreneurialAreaOther",
+        "Informe a outra área da experiência",
+      );
       break;
     }
 
@@ -1149,7 +1193,11 @@ const getMissingItems = (
         "companySize",
         "Escolha o porte da empresa",
       );
-      add(!data.companyOperatingTime, "companyOperatingTime", "Escolha há quanto tempo a empresa funciona");
+      add(
+        !data.companyOperatingTime,
+        "companyOperatingTime",
+        "Escolha há quanto tempo a empresa funciona",
+      );
       add(
         data.companyOperatingTime === "outro" && !isFilled(data.companyOperatingTimeOther),
         "companyOperatingTimeOther",
@@ -1186,19 +1234,24 @@ const getMissingItems = (
     }
 
     case "sebrae-relationship": {
-      add(!data.courseContact, "courseContact", "Informe seu contato com os cursos do Sebrae");
-      const hasOnline = ["online", "ambos"].includes(data.courseContact);
-      const hasPresencial = ["presencial", "ambos"].includes(data.courseContact);
-      add(hasOnline && data.onlineCourses.length === 0, "onlineCourses", "Marque pelo menos um curso online");
+      add(!data.courseContact, "courseContact", "Informe se você já fez curso do Sebrae");
+      const hasCourse = data.courseContact === "sim";
+      const hasOnline = data.courseFormats.includes("online");
+      const hasPresencial = data.courseFormats.includes("presencial");
       add(
-        hasOnline && data.onlineCourses.includes("outro") && !isFilled(data.onlineCourseOther),
-        "onlineCourseOther",
-        "Informe o outro curso online",
+        hasCourse && data.courseFormats.length === 0,
+        "courseFormats",
+        "Escolha como você fez o curso",
       );
       add(
-        hasPresencial && !isFilled(data.presencialCourse),
+        hasCourse && hasOnline && data.onlineCourses.length === 0,
+        "onlineCourses",
+        "Marque pelo menos um curso online",
+      );
+      add(
+        hasCourse && hasPresencial && !isFilled(data.presencialCourse),
         "presencialCourse",
-        "Informe o curso presencial",
+        "Informe o nome do curso presencial",
       );
       break;
     }
@@ -1210,7 +1263,7 @@ const getMissingItems = (
         "courseReasonOther",
         "Descreva o outro motivo",
       );
-      requireResponse("common.relationship.expectations", "Avalie o atendimento às expectativas");
+      requireResponse("common.relationship.expectations", "Avalie suas expectativas");
       requireResponse("common.relationship.performance", "Avalie seu desempenho");
       requireResponse("common.relationship.workload", "Avalie a carga horária");
       break;
@@ -1223,6 +1276,10 @@ const getMissingItems = (
 
     case "application-practice": {
       APPLICATION_QUESTIONS.forEach((question) => requireResponse(question.id, question.text));
+      break;
+    }
+
+    case "application-changes": {
       add(data.changesMade.length === 0, "changesMade", "Marque pelo menos uma mudança");
       add(
         data.changesMade.includes("outro") && !isFilled(data.changesMadeOther),
@@ -1364,12 +1421,13 @@ function TextField({
         min={min}
         max={max}
         autoComplete={autoComplete}
+        required={required}
         placeholder={placeholder}
         onChange={(event: React.ChangeEvent<HTMLInputElement>) => onChange(event.target.value)}
         className={`min-h-12 w-full rounded-xl border bg-white px-4 py-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-4 ${
           error
             ? "border-red-500 focus:border-red-600 focus:ring-red-100"
-            : "border-slate-300 focus:border-[#005AA5] focus:ring-blue-100"
+            : "border-slate-300 focus:border-[#2F55D4] focus:ring-blue-100"
         }`}
         aria-invalid={error || undefined}
         aria-describedby={helper ? `${id}-helper` : undefined}
@@ -1415,12 +1473,13 @@ function SelectField({
         id={id}
         name={id}
         value={value}
+        required={required}
         disabled={disabled}
         onChange={(event: React.ChangeEvent<HTMLSelectElement>) => onChange(event.target.value)}
         className={`min-h-12 w-full rounded-xl border bg-white px-4 py-3 text-base text-slate-900 outline-none transition focus:ring-4 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 ${
           error
             ? "border-red-500 focus:border-red-600 focus:ring-red-100"
-            : "border-slate-300 focus:border-[#005AA5] focus:ring-blue-100"
+            : "border-slate-300 focus:border-[#2F55D4] focus:ring-blue-100"
         }`}
         aria-invalid={error || undefined}
         aria-busy={loading || undefined}
@@ -1482,7 +1541,7 @@ function ChoiceCards({
               key={option.value}
               className={`relative flex min-h-14 cursor-pointer items-start gap-3 rounded-2xl border p-4 transition focus-within:ring-4 focus-within:ring-blue-100 ${
                 selected
-                  ? "border-[#005AA5] bg-blue-50 text-[#004b8b] shadow-sm"
+                  ? "border-[#2F55D4] bg-blue-50 text-[#1F3FB4] shadow-sm"
                   : error
                     ? "border-red-300 bg-white hover:border-red-400"
                     : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50"
@@ -1498,7 +1557,7 @@ function ChoiceCards({
               />
               <span
                 className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                  selected ? "border-[#005AA5] bg-[#005AA5]" : "border-slate-400 bg-white"
+                  selected ? "border-[#2F55D4] bg-[#2F55D4]" : "border-slate-400 bg-white"
                 }`}
                 aria-hidden="true"
               >
@@ -1560,7 +1619,7 @@ function CheckboxCards({
               key={option.value}
               className={`flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition focus-within:ring-4 focus-within:ring-blue-100 ${
                 selected
-                  ? "border-[#005AA5] bg-blue-50 text-[#004b8b]"
+                  ? "border-[#2F55D4] bg-blue-50 text-[#1F3FB4]"
                   : error
                     ? "border-red-300 bg-white hover:border-red-400"
                     : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50"
@@ -1574,7 +1633,7 @@ function CheckboxCards({
               />
               <span
                 className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${
-                  selected ? "border-[#005AA5] bg-[#005AA5]" : "border-slate-400 bg-white"
+                  selected ? "border-[#2F55D4] bg-[#2F55D4]" : "border-slate-400 bg-white"
                 }`}
                 aria-hidden="true"
               >
@@ -1636,7 +1695,7 @@ function LikertQuestion({
               key={String(option.value)}
               className={`flex min-h-14 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition focus-within:ring-4 focus-within:ring-blue-100 lg:min-h-24 lg:flex-col lg:justify-center lg:text-center ${
                 selected
-                  ? "border-[#005AA5] bg-[#005AA5] text-white shadow-sm"
+                  ? "border-[#2F55D4] bg-[#2F55D4] text-white shadow-sm"
                   : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50"
               }`}
               title={`${option.value} — ${option.label}`}
@@ -1671,7 +1730,7 @@ function LikertQuestion({
                 key={String(option.value)}
                 className={`flex min-h-12 cursor-pointer items-center justify-center rounded-xl border px-4 py-3 text-center transition focus-within:ring-4 focus-within:ring-blue-100 ${
                   selected
-                    ? "border-[#005AA5] bg-[#005AA5] text-white shadow-sm"
+                    ? "border-[#2F55D4] bg-[#2F55D4] text-white shadow-sm"
                     : "border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-300 hover:bg-blue-50"
                 }`}
                 title={option.label}
@@ -1745,14 +1804,16 @@ export default function App() {
   );
   const [showErrors, setShowErrors] = useState(false);
   const [pageError, setPageError] = useState("");
-  const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
+  const firstName = useMemo(() => getFirstName(formData.fullName), [formData.fullName]);
   const isPJ = formData.professionalCategory.startsWith("pj_");
-  const hasCourse = Boolean(formData.courseContact && formData.courseContact !== "nenhum");
-  const hasOnlineCourseContact = ["online", "ambos"].includes(formData.courseContact);
+  const isWorkingToday = worksToday(formData.professionalCategory);
+  const hasCourse = formData.courseContact === "sim";
+  const hasOnlineCourseContact = formData.courseFormats.includes("online");
+  const hasPresencialCourseContact = formData.courseFormats.includes("presencial");
   const residenceMunicipalities = useMunicipalities(formData.residenceState);
   const companyMunicipalities = useMunicipalities(
     isPJ && formData.companyLocationType === "fisica" ? formData.companyState : "",
@@ -1790,24 +1851,38 @@ export default function App() {
       ),
     [formData.onlineCourses],
   );
+  const selectedCourseNames = useMemo(() => {
+    const names = selectedSpecificCourses.map(
+      (courseId) => COURSES.find((course) => course.id === courseId)?.title || courseId,
+    );
+
+    if (hasPresencialCourseContact && isFilled(formData.presencialCourse)) {
+      formData.presencialCourse
+        .split(/[,\n;]/)
+        .map((name) => name.trim())
+        .filter(Boolean)
+        .forEach((name) => names.push(name));
+    }
+
+    return names;
+  }, [formData.presencialCourse, hasPresencialCourseContact, selectedSpecificCourses]);
 
   const pages = useMemo<SurveyPage[]>(() => {
+    const name = firstName || "Você";
     const result: SurveyPage[] = [
       {
         id: "identification",
         kind: "identification",
         eyebrow: "Identificação",
-        title: "Seus dados básicos",
-        description:
-          "Informe seu CPF e seu nome. E-mail e telefone são opcionais.",
+        title: "Diga quem é você",
+        description: "Preencha seus dados para registrar a resposta e identificar sua região.",
       },
       {
         id: "participant-profile",
         kind: "participant-profile",
-        eyebrow: "Núcleo comum · Bloco 1",
-        title: "Sobre você",
-        description:
-          "As respostas ajudam o Sebrae a entender o perfil de quem participa.",
+        eyebrow: "Sobre você",
+        title: `${name}, conte como está sua vida profissional`,
+        description: "Vamos fazer somente as perguntas que fazem sentido para sua situação atual.",
       },
     ];
 
@@ -1815,57 +1890,63 @@ export default function App() {
       result.push({
         id: "company-profile",
         kind: "company-profile",
-        eyebrow: "Núcleo comum · Bloco 2",
-        title: "Sobre a empresa",
-        description:
-          "Esta parte aparece só para quem informou que tem Pessoa Jurídica.",
+        eyebrow: "Sobre a empresa",
+        title: `${name}, conte sobre sua empresa`,
+        description: "Estas informações ajudam o Sebrae a entender o perfil do seu negócio.",
       });
     }
 
     result.push({
       id: "sebrae-relationship",
       kind: "sebrae-relationship",
-      eyebrow: "Núcleo comum · Bloco 3",
-      title: "Cursos do Sebrae",
-      description:
-        "Suas escolhas definem as próximas perguntas.",
+      eyebrow: "Cursos do Sebrae",
+      title: `${name}, conte quais cursos você fez`,
+      description: "Primeiro diga se já fez um curso. Depois, informe se foi online ou presencial.",
     });
 
     if (hasCourse) {
       result.push({
         id: "course-evaluation",
         kind: "course-evaluation",
-        eyebrow: "Núcleo comum · Bloco 3",
-        title: "Motivos e avaliação dos cursos",
-        description: "Pense em todos os cursos que você fez ou acessou.",
+        eyebrow: "Motivos e avaliação",
+        title: `${name}, por que você fez esses cursos?`,
+        description: "Veja os cursos informados e conte o que levou você a escolhê-los.",
       });
 
       if (isPJ) {
         result.push({
           id: "before-course",
           kind: "before-course",
-          eyebrow: "Núcleo comum · Bloco 4",
-          title: "Como estava a empresa antes dos cursos",
-          description:
-            "Avalie a situação da empresa antes dos cursos.",
+          eyebrow: "Antes dos cursos",
+          title: `${name}, como estava a empresa antes?`,
+          description: "Pense na situação da empresa antes de fazer os cursos.",
         });
       }
 
-      result.push({
-        id: "application-practice",
-        kind: "application-practice",
-        eyebrow: "Núcleo comum · Bloco 5",
-        title: "O que você aplicou",
-        description: "Conte o que você conseguiu colocar em prática.",
-      });
+      result.push(
+        {
+          id: "application-practice",
+          kind: "application-practice",
+          eyebrow: "Uso do aprendizado",
+          title: `${name}, você colocou o conteúdo em prática?`,
+          description: "Conte se conseguiu usar o que aprendeu.",
+        },
+        {
+          id: "application-changes",
+          kind: "application-changes",
+          eyebrow: "Mudanças depois dos cursos",
+          title: `${name}, o que mudou depois dos cursos?`,
+          description: "Marque as mudanças que aconteceram depois do aprendizado.",
+        },
+      );
 
       if (isPJ) {
         result.push({
           id: "application-areas",
           kind: "application-areas",
-          eyebrow: "Núcleo comum · Bloco 5",
-          title: "Áreas que mudaram",
-          description: "Marque as áreas da empresa que mudaram.",
+          eyebrow: "Áreas da empresa",
+          title: `${name}, em quais áreas a empresa mudou?`,
+          description: "Marque as áreas afetadas pelas mudanças.",
         });
       }
 
@@ -1873,16 +1954,16 @@ export default function App() {
         {
           id: "application-difficulties",
           kind: "application-difficulties",
-          eyebrow: "Núcleo comum · Bloco 5",
-          title: "Dificuldades para aplicar o conteúdo",
-          description: "Marque todas as dificuldades que você teve.",
+          eyebrow: "Dificuldades",
+          title: `${name}, o que dificultou a aplicação?`,
+          description: "Marque tudo o que dificultou usar o conteúdo.",
         },
         {
           id: "application-support",
           kind: "application-support",
-          eyebrow: "Núcleo comum · Bloco 5",
-          title: "Apoio de que você precisa",
-          description: "Marque o que ajudaria você a aplicar melhor o conteúdo.",
+          eyebrow: "Próximos apoios",
+          title: `${name}, que apoio ajudaria agora?`,
+          description: "Marque o apoio que ajudaria você a avançar.",
         },
       );
 
@@ -1890,10 +1971,9 @@ export default function App() {
         result.push({
           id: "results",
           kind: "results",
-          eyebrow: "Núcleo comum · Resultados",
-          title: "Resultados na empresa",
-          description:
-            "Avalie quanto os cursos contribuíram para cada resultado.",
+          eyebrow: "Resultados percebidos",
+          title: `${name}, quais resultados você percebeu?`,
+          description: "Avalie as mudanças percebidas na empresa depois dos cursos.",
         });
       }
 
@@ -1905,9 +1985,9 @@ export default function App() {
             id: `specific-${courseId}`,
             kind: "specific-course",
             eyebrow: "Perguntas do curso",
-            title: course.title,
+            title: `${name}, avalie ${course.title}`,
             description:
-              "Para cada frase, escolha uma opção de 1 a 7. Use “Não se aplica à minha realidade” quando necessário.",
+              "Escolha de 1 a 7. Use “Não se aplica à minha realidade” quando for necessário.",
             courseId,
           });
         });
@@ -1918,13 +1998,12 @@ export default function App() {
       id: "review",
       kind: "review",
       eyebrow: "Revisão final",
-      title: "Confira suas respostas",
-      description:
-        "Leia o resumo. Use “Voltar” para corrigir algo.",
+      title: `${name}, confira suas respostas`,
+      description: "Leia o resumo. Use “Voltar” para corrigir alguma informação.",
     });
 
     return result;
-  }, [hasCourse, hasOnlineCourseContact, isPJ, selectedSpecificCourses]);
+  }, [firstName, hasCourse, hasOnlineCourseContact, isPJ, selectedSpecificCourses]);
 
   const currentPageIndex = Math.max(
     0,
@@ -1944,6 +2023,57 @@ export default function App() {
     value: SurveyFormData[Key],
   ) => {
     setFormData((previous) => ({ ...previous, [key]: value }));
+  };
+
+  const updateProfessionalCategory = (value: string) => {
+    setFormData((previous) => {
+      const doesNotWork = !worksToday(value);
+      return {
+        ...previous,
+        professionalCategory: value,
+        professionalArea: doesNotWork ? "" : previous.professionalArea,
+        professionalAreaOther: doesNotWork ? "" : previous.professionalAreaOther,
+        yearsInCurrentArea: doesNotWork ? "" : previous.yearsInCurrentArea,
+      };
+    });
+  };
+
+  const updateCourseExperience = (value: string) => {
+    setFormData((previous) => ({
+      ...previous,
+      courseContact: value,
+      courseFormats: value === "sim" ? previous.courseFormats : [],
+      onlineCourses: value === "sim" ? previous.onlineCourses : [],
+      onlineCourseOther: "",
+      presencialCourse: value === "sim" ? previous.presencialCourse : "",
+      courseReasons: value === "sim" ? previous.courseReasons : [],
+      courseReasonOther: value === "sim" ? previous.courseReasonOther : "",
+      changesMade: value === "sim" ? previous.changesMade : [],
+      changesMadeOther: value === "sim" ? previous.changesMadeOther : "",
+      affectedAreas: value === "sim" ? previous.affectedAreas : [],
+      affectedAreasOther: value === "sim" ? previous.affectedAreasOther : "",
+      applicationDifficulties:
+        value === "sim" ? previous.applicationDifficulties : [],
+      applicationDifficultiesOther:
+        value === "sim" ? previous.applicationDifficultiesOther : "",
+      supportNeeds: value === "sim" ? previous.supportNeeds : [],
+      supportNeedsOther: value === "sim" ? previous.supportNeedsOther : "",
+    }));
+  };
+
+  const toggleCourseFormat = (format: string) => {
+    setFormData((previous) => {
+      const courseFormats = toggleArrayValue(previous.courseFormats, format);
+      return {
+        ...previous,
+        courseFormats,
+        onlineCourses: courseFormats.includes("online") ? previous.onlineCourses : [],
+        onlineCourseOther: "",
+        presencialCourse: courseFormats.includes("presencial")
+          ? previous.presencialCourse
+          : "",
+      };
+    });
   };
 
   const updateResidenceState = (state: string) => {
@@ -1982,7 +2112,6 @@ export default function App() {
       };
       window.sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
       setHasDraft(true);
-      setSavedAt(new Date());
     }, 250);
 
     return () => window.clearTimeout(timeout);
@@ -2021,7 +2150,6 @@ export default function App() {
     setShowErrors(false);
     setPageError("");
     setSubmitError("");
-    setSavedAt(null);
   };
 
   const moveToPage = (pageId: string) => {
@@ -2077,6 +2205,13 @@ export default function App() {
         Object.entries(formData.responses).filter(([id]) => activeResponseIds.has(id)),
       );
 
+      const normalizedCourseContact = !hasCourse
+        ? "nenhum"
+        : hasOnlineCourseContact && hasPresencialCourseContact
+          ? "ambos"
+          : hasOnlineCourseContact
+            ? "online"
+            : "presencial";
       const normalizedOnlineCourses = hasOnlineCourseContact ? formData.onlineCourses : [];
       const legacyCourses = normalizedOnlineCourses.map((courseId) =>
         courseId === "outro" ? "outros" : courseId,
@@ -2090,6 +2225,12 @@ export default function App() {
 
       const payload = {
         ...formData,
+        professionalArea: isWorkingToday ? formData.professionalArea : "",
+        professionalAreaOther: isWorkingToday ? formData.professionalAreaOther : "",
+        yearsInCurrentArea: isWorkingToday ? formData.yearsInCurrentArea : "",
+        courseExperience: formData.courseContact,
+        courseContact: normalizedCourseContact,
+        courseFormats: hasCourse ? formData.courseFormats : [],
         companySize:
           isPJ && formData.professionalCategory === "pj_mei"
             ? "mei"
@@ -2110,10 +2251,8 @@ export default function App() {
         salesChannels: isPJ ? formData.salesChannels : [],
         salesChannelOther: isPJ ? formData.salesChannelOther : "",
         onlineCourses: normalizedOnlineCourses,
-        onlineCourseOther: hasOnlineCourseContact ? formData.onlineCourseOther : "",
-        presencialCourse: ["presencial", "ambos"].includes(formData.courseContact)
-          ? formData.presencialCourse
-          : "",
+        onlineCourseOther: "",
+        presencialCourse: hasPresencialCourseContact ? formData.presencialCourse : "",
         courseReasons: hasCourse ? formData.courseReasons : [],
         courseReasonOther: hasCourse ? formData.courseReasonOther : "",
         changesMade: hasCourse ? formData.changesMade : [],
@@ -2148,9 +2287,8 @@ export default function App() {
 
         questionnaireVersion: SURVEY_VERSION,
         respondentType: isPJ ? "PJ" : "PF",
-        selectedCourseTitles: selectedSpecificCourses.map(
-          (courseId) => COURSES.find((course) => course.id === courseId)?.title || courseId,
-        ),
+        selectedCourseTitles: selectedCourseNames,
+        firstName,
         startedAt,
         timestamp: new Date().toISOString(),
       };
@@ -2204,7 +2342,7 @@ export default function App() {
 
   const renderCourseCards = () => (
     <div data-field="onlineCourses">
-      <FieldLabel label="Quais cursos online você fez ou acessou?" required />
+      <FieldLabel label="Quais destes cursos online você fez?" required />
       <p className="mb-4 text-sm text-slate-500">Marque um ou mais cursos.</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {COURSES.map((course) => {
@@ -2215,10 +2353,10 @@ export default function App() {
               key={course.id}
               className={`flex min-h-32 cursor-pointer flex-col justify-between rounded-2xl border p-4 transition focus-within:ring-4 focus-within:ring-blue-100 ${
                 selected
-                  ? "border-[#005AA5] bg-blue-50 text-[#004b8b] shadow-sm"
+                  ? "border-[#2F55D4] bg-[#F1F5FF] text-[#1F3FB4] shadow-sm"
                   : hasError("onlineCourses")
                     ? "border-red-300 hover:border-red-400"
-                    : "border-slate-200 hover:border-blue-300 hover:bg-slate-50"
+                    : "border-[#D8E0F0] hover:border-[#91A7EA] hover:bg-[#F7F9FF]"
               }`}
             >
               <input
@@ -2233,62 +2371,26 @@ export default function App() {
                 className="sr-only"
               />
               <div className="flex items-start justify-between gap-3">
-                <span className="rounded-xl bg-white p-2 shadow-sm">
+                <span className="rounded-xl bg-white p-2 text-[#2F55D4] shadow-sm">
                   <Icon size={24} aria-hidden="true" />
                 </span>
                 <span
                   className={`flex h-6 w-6 items-center justify-center rounded-full border ${
-                    selected ? "border-[#005AA5] bg-[#005AA5]" : "border-slate-300 bg-white"
+                    selected
+                      ? "border-[#2F55D4] bg-[#2F55D4]"
+                      : "border-slate-300 bg-white"
                   }`}
                   aria-hidden="true"
                 >
-                  {selected ? <span className="text-xs font-black leading-none text-white">✓</span> : null}
+                  {selected ? (
+                    <span className="text-xs font-black leading-none text-white">✓</span>
+                  ) : null}
                 </span>
               </div>
               <span className="mt-4 text-sm font-bold leading-5">{course.title}</span>
             </label>
           );
         })}
-
-        <label
-          className={`flex min-h-32 cursor-pointer flex-col justify-between rounded-2xl border p-4 transition focus-within:ring-4 focus-within:ring-blue-100 ${
-            formData.onlineCourses.includes("outro")
-              ? "border-[#005AA5] bg-blue-50 text-[#004b8b] shadow-sm"
-              : hasError("onlineCourses")
-                ? "border-red-300 hover:border-red-400"
-                : "border-slate-200 hover:border-blue-300 hover:bg-slate-50"
-          }`}
-        >
-          <input
-            type="checkbox"
-            checked={formData.onlineCourses.includes("outro")}
-            onChange={() =>
-              updateField(
-                "onlineCourses",
-                toggleArrayValue(formData.onlineCourses, "outro"),
-              )
-            }
-            className="sr-only"
-          />
-          <div className="flex items-start justify-between gap-3">
-            <span className="rounded-xl bg-white p-2 shadow-sm">
-              <PlusCircle size={24} aria-hidden="true" />
-            </span>
-            <span
-              className={`flex h-6 w-6 items-center justify-center rounded-full border ${
-                formData.onlineCourses.includes("outro")
-                  ? "border-[#005AA5] bg-[#005AA5]"
-                  : "border-slate-300 bg-white"
-              }`}
-              aria-hidden="true"
-            >
-              {formData.onlineCourses.includes("outro") ? (
-                <span className="text-xs font-black leading-none text-white">✓</span>
-              ) : null}
-            </span>
-          </div>
-          <span className="mt-4 text-sm font-bold leading-5">Outro curso online</span>
-        </label>
       </div>
       {hasError("onlineCourses") ? <FieldError /> : null}
     </div>
@@ -2298,39 +2400,60 @@ export default function App() {
     switch (currentPage.kind) {
       case "identification":
         return (
-          <div className="space-y-7">
-            <InfoBanner icon={CheckCircle2} title="Rascunho salvo nesta aba" tone="slate">
-              O navegador apaga o rascunho depois do envio.
+          <div className="space-y-8">
+            <InfoBanner icon={CheckCircle2} title="Seus dados estão protegidos">
+              Os dados desta pesquisa serão tratados pelo Sebrae conforme a Lei Geral de
+              Proteção de Dados. {" "}
+              <a
+                href={SEBRAE_LGPD_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="font-bold underline decoration-blue-300 underline-offset-4 hover:text-[#1F3FB4]"
+              >
+                Saiba como o Sebrae protege seus dados.
+              </a>
             </InfoBanner>
 
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <TextField
-                id="cpf"
-                label="CPF"
-                value={formData.cpf}
-                onChange={(value) => updateField("cpf", maskCPF(value))}
-                placeholder="000.000.000-00"
-                inputMode="numeric"
-                autoComplete="off"
-                required
-                error={hasError("cpf")}
-              />
-              <TextField
-                id="fullName"
-                label="Nome completo"
-                value={formData.fullName}
-                onChange={(value) => updateField("fullName", value)}
-                placeholder="Digite seu nome"
-                autoComplete="name"
-                required
-                error={hasError("fullName")}
-              />
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <section className="space-y-5">
               <SectionHeading
-                title="Contato opcional"
-                description="Preencha apenas se quiser informar um contato."
+                title="Seus dados"
+                description="Todos os campos desta página são obrigatórios."
+              />
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <TextField
+                  id="cpf"
+                  label="CPF"
+                  value={formData.cpf}
+                  onChange={(value) => updateField("cpf", maskCPF(value))}
+                  placeholder="000.000.000-00"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  required
+                  error={hasError("cpf")}
+                />
+                <TextField
+                  id="fullName"
+                  label="Nome completo"
+                  value={formData.fullName}
+                  onChange={(value) => updateField("fullName", value)}
+                  placeholder="Digite seu nome"
+                  autoComplete="name"
+                  required
+                  error={hasError("fullName")}
+                />
+              </div>
+
+              {firstName ? (
+                <p className="rounded-xl bg-[#F1F5FF] px-4 py-3 text-sm font-semibold text-[#1F3FB4]">
+                  Prazer, {firstName}. Agora complete os dados abaixo.
+                </p>
+              ) : null}
+            </section>
+
+            <section className="rounded-2xl border border-[#D8E0F0] bg-[#F7F9FF] p-5 sm:p-6">
+              <SectionHeading
+                title="Como podemos falar com você?"
+                description="Informe um e-mail e um telefone válidos."
               />
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <TextField
@@ -2341,87 +2464,194 @@ export default function App() {
                   type="email"
                   placeholder="nome@dominio.com"
                   autoComplete="email"
+                  required
                   error={hasError("email")}
                 />
                 <TextField
                   id="phone"
-                  label="Telefone / WhatsApp"
+                  label="Telefone ou WhatsApp"
                   value={formData.phone}
                   onChange={(value) => updateField("phone", maskPhone(value))}
                   placeholder="(00) 00000-0000"
                   inputMode="tel"
                   autoComplete="tel"
+                  required
                   error={hasError("phone")}
                 />
               </div>
-            </div>
+            </section>
+
+            <section className="space-y-6">
+              <SectionHeading
+                title="Um pouco mais sobre você"
+                description="Essas respostas ajudam o Sebrae a entender quem participa."
+              />
+
+              <ChoiceCards
+                id="gender"
+                label="Qual é o seu gênero?"
+                value={formData.gender}
+                options={GENDER_OPTIONS}
+                onChange={(value) => updateField("gender", value)}
+                columns="three"
+                required
+                error={hasError("gender")}
+              />
+
+              {formData.gender === "outro" ? (
+                <TextField
+                  id="genderOther"
+                  label="Como você prefere descrever seu gênero?"
+                  value={formData.genderOther}
+                  onChange={(value) => updateField("genderOther", value)}
+                  placeholder="Digite sua resposta"
+                  required
+                  error={hasError("genderOther")}
+                />
+              ) : null}
+
+              <ChoiceCards
+                id="ageRange"
+                label="Qual é a sua faixa de idade?"
+                value={formData.ageRange}
+                options={AGE_OPTIONS}
+                onChange={(value) => updateField("ageRange", value)}
+                columns="three"
+                required
+                error={hasError("ageRange")}
+              />
+
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-[220px_1fr]">
+                <SelectField
+                  id="residenceState"
+                  label="1. Estado onde você mora"
+                  value={formData.residenceState}
+                  options={STATES}
+                  onChange={updateResidenceState}
+                  placeholder="Escolha o estado"
+                  required
+                  error={hasError("residenceState")}
+                />
+
+                {residenceMunicipalities.error ? (
+                  <div>
+                    <TextField
+                      id="residenceCity"
+                      label="2. Município onde você mora"
+                      value={formData.residenceCity}
+                      onChange={(value) => updateField("residenceCity", value)}
+                      placeholder="Digite o município"
+                      autoComplete="address-level2"
+                      helper="A lista não carregou. Digite o município ou tente novamente."
+                      required
+                      error={hasError("residenceCity")}
+                    />
+                    <button
+                      type="button"
+                      onClick={residenceMunicipalities.retry}
+                      className="mt-2 text-sm font-bold text-[#2F55D4] underline decoration-blue-200 underline-offset-4 hover:text-[#1F3FB4] focus:outline-none focus:ring-4 focus:ring-blue-100"
+                    >
+                      Tentar carregar os municípios
+                    </button>
+                  </div>
+                ) : (
+                  <SelectField
+                    id="residenceCity"
+                    label="2. Município onde você mora"
+                    value={formData.residenceCity}
+                    options={residenceCityOptions}
+                    onChange={(value) => updateField("residenceCity", value)}
+                    placeholder={
+                      formData.residenceState
+                        ? "Escolha o município"
+                        : "Escolha o estado primeiro"
+                    }
+                    disabled={!formData.residenceState || residenceMunicipalities.loading}
+                    loading={residenceMunicipalities.loading}
+                    helper={
+                      formData.residenceState
+                        ? "A lista mostra apenas os municípios do estado escolhido."
+                        : "Primeiro, escolha o estado."
+                    }
+                    required
+                    error={hasError("residenceCity")}
+                  />
+                )}
+              </div>
+            </section>
           </div>
         );
 
-      case "participant-profile": {
-        const requiresYears = !["estudante", "nao_atuo"].includes(
-          formData.professionalArea,
-        );
+      case "participant-profile":
         return (
           <div className="space-y-8">
             <ChoiceCards
               id="professionalCategory"
-              label="Como você trabalha hoje?"
+              label={`${firstName || "Você"}, qual opção descreve melhor sua situação hoje?`}
               value={formData.professionalCategory}
               options={PROFESSIONAL_CATEGORY_OPTIONS}
-              onChange={(value) => updateField("professionalCategory", value)}
+              onChange={updateProfessionalCategory}
               columns="two"
               required
               error={hasError("professionalCategory")}
             />
 
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-              <SelectField
-                id="professionalArea"
-                label="Em qual área você trabalha?"
-                value={formData.professionalArea}
-                options={PROFESSIONAL_AREA_OPTIONS}
-                onChange={(value) => updateField("professionalArea", value)}
-                required
-                error={hasError("professionalArea")}
-              />
-              {requiresYears ? (
-                <TextField
-                  id="yearsInCurrentArea"
-                  label="Há quanto tempo está nessa área?"
-                  value={formData.yearsInCurrentArea}
-                  onChange={(value) => updateField("yearsInCurrentArea", value)}
-                  type="number"
-                  min="0"
-                  max="80"
-                  inputMode="numeric"
-                  placeholder="Quantidade de anos"
-                  required
-                  error={hasError("yearsInCurrentArea")}
-                />
-              ) : (
-                <InfoBanner tone="slate">
-                  Como você informou que é estudante ou ainda não atua profissionalmente, a pergunta
-                  sobre tempo de atuação não é necessária.
-                </InfoBanner>
-              )}
-            </div>
+            {formData.professionalCategory && !isWorkingToday ? (
+              <InfoBanner
+                tone="slate"
+                title={firstName ? `Entendi, ${firstName}.` : "Entendi."}
+              >
+                Como você não está trabalhando agora, vamos pular as perguntas sobre área e tempo de trabalho.
+              </InfoBanner>
+            ) : null}
 
-            {formData.professionalArea === "outro" ? (
-              <TextField
-                id="professionalAreaOther"
-                label="Qual é a outra área de atuação?"
-                value={formData.professionalAreaOther}
-                onChange={(value) => updateField("professionalAreaOther", value)}
-                placeholder="Descreva a área"
-                required
-                error={hasError("professionalAreaOther")}
-              />
+            {isWorkingToday ? (
+              <section className="rounded-2xl border border-[#D8E0F0] bg-[#F7F9FF] p-5 sm:p-6">
+                <SectionHeading title="Sobre seu trabalho atual" />
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                  <SelectField
+                    id="professionalArea"
+                    label="Em qual área você trabalha?"
+                    value={formData.professionalArea}
+                    options={PROFESSIONAL_AREA_OPTIONS}
+                    onChange={(value) => updateField("professionalArea", value)}
+                    required
+                    error={hasError("professionalArea")}
+                  />
+                  <TextField
+                    id="yearsInCurrentArea"
+                    label="Há quantos anos você trabalha nessa área?"
+                    value={formData.yearsInCurrentArea}
+                    onChange={(value) => updateField("yearsInCurrentArea", value)}
+                    type="number"
+                    min="0"
+                    max="80"
+                    inputMode="numeric"
+                    placeholder="Ex.: 4"
+                    required
+                    error={hasError("yearsInCurrentArea")}
+                  />
+                </div>
+
+                {formData.professionalArea === "outro" ? (
+                  <div className="mt-5">
+                    <TextField
+                      id="professionalAreaOther"
+                      label="Qual é a outra área?"
+                      value={formData.professionalAreaOther}
+                      onChange={(value) => updateField("professionalAreaOther", value)}
+                      placeholder="Digite a área"
+                      required
+                      error={hasError("professionalAreaOther")}
+                    />
+                  </div>
+                ) : null}
+              </section>
             ) : null}
 
             <SelectField
               id="previousEntrepreneurialArea"
-              label="Antes da atividade atual, em qual área você teve experiência como empreendedor?"
+              label="Você já teve experiência como empreendedor? Em qual área?"
               value={formData.previousEntrepreneurialArea}
               options={PREVIOUS_EXPERIENCE_OPTIONS}
               onChange={(value) => updateField("previousEntrepreneurialArea", value)}
@@ -2432,109 +2662,16 @@ export default function App() {
             {formData.previousEntrepreneurialArea === "outro" ? (
               <TextField
                 id="previousEntrepreneurialAreaOther"
-                label="Qual foi a outra área dessa experiência?"
+                label="Qual foi a outra área?"
                 value={formData.previousEntrepreneurialAreaOther}
                 onChange={(value) => updateField("previousEntrepreneurialAreaOther", value)}
-                placeholder="Descreva a área"
+                placeholder="Digite a área"
                 required
                 error={hasError("previousEntrepreneurialAreaOther")}
               />
             ) : null}
-
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-[220px_1fr]">
-              <SelectField
-                id="residenceState"
-                label="1. Estado de residência"
-                value={formData.residenceState}
-                options={STATES}
-                onChange={updateResidenceState}
-                placeholder="Escolha o estado"
-                required
-                error={hasError("residenceState")}
-              />
-
-              {residenceMunicipalities.error ? (
-                <div>
-                  <TextField
-                    id="residenceCity"
-                    label="2. Município de residência"
-                    value={formData.residenceCity}
-                    onChange={(value) => updateField("residenceCity", value)}
-                    placeholder="Digite o município"
-                    autoComplete="address-level2"
-                    helper="A lista não carregou. Digite o nome do município ou tente de novo."
-                    required
-                    error={hasError("residenceCity")}
-                  />
-                  <button
-                    type="button"
-                    onClick={residenceMunicipalities.retry}
-                    className="mt-2 text-sm font-bold text-[#005AA5] underline decoration-blue-200 underline-offset-4 hover:text-[#004b8b] focus:outline-none focus:ring-4 focus:ring-blue-100"
-                  >
-                    Tentar carregar a lista de municípios
-                  </button>
-                </div>
-              ) : (
-                <SelectField
-                  id="residenceCity"
-                  label="2. Município de residência"
-                  value={formData.residenceCity}
-                  options={residenceCityOptions}
-                  onChange={(value) => updateField("residenceCity", value)}
-                  placeholder={
-                    formData.residenceState
-                      ? "Escolha o município"
-                      : "Escolha o estado primeiro"
-                  }
-                  disabled={!formData.residenceState || residenceMunicipalities.loading}
-                  loading={residenceMunicipalities.loading}
-                  helper={
-                    formData.residenceState
-                      ? "A lista mostra os municípios do estado escolhido."
-                      : "Primeiro escolha o estado."
-                  }
-                  required
-                  error={hasError("residenceCity")}
-                />
-              )}
-            </div>
-
-            <ChoiceCards
-              id="gender"
-              label="Qual é o seu gênero?"
-              value={formData.gender}
-              options={GENDER_OPTIONS}
-              onChange={(value) => updateField("gender", value)}
-              columns="three"
-              required
-              error={hasError("gender")}
-            />
-
-            {formData.gender === "outro" ? (
-              <TextField
-                id="genderOther"
-                label="Como você prefere descrever seu gênero?"
-                value={formData.genderOther}
-                onChange={(value) => updateField("genderOther", value)}
-                placeholder="Digite sua resposta"
-                required
-                error={hasError("genderOther")}
-              />
-            ) : null}
-
-            <ChoiceCards
-              id="ageRange"
-              label="Qual é a sua idade?"
-              value={formData.ageRange}
-              options={AGE_OPTIONS}
-              onChange={(value) => updateField("ageRange", value)}
-              columns="three"
-              required
-              error={hasError("ageRange")}
-            />
           </div>
         );
-      }
 
       case "company-profile":
         return (
@@ -2547,7 +2684,7 @@ export default function App() {
             ) : (
               <ChoiceCards
                 id="companySize"
-                label="Qual é o porte da empresa?"
+                label="Qual é o tamanho da empresa?"
                 value={formData.companySize}
                 options={COMPANY_SIZE_OPTIONS}
                 onChange={(value) => updateField("companySize", value)}
@@ -2619,7 +2756,7 @@ export default function App() {
                     <button
                       type="button"
                       onClick={companyMunicipalities.retry}
-                      className="mt-2 text-sm font-bold text-[#005AA5] underline decoration-blue-200 underline-offset-4 hover:text-[#004b8b] focus:outline-none focus:ring-4 focus:ring-blue-100"
+                      className="mt-2 text-sm font-bold text-[#2F55D4] underline decoration-blue-200 underline-offset-4 hover:text-[#1F3FB4] focus:outline-none focus:ring-4 focus:ring-blue-100"
                     >
                       Tentar carregar a lista de municípios
                     </button>
@@ -2652,7 +2789,7 @@ export default function App() {
 
             <SelectField
               id="companySegment"
-              label="Qual é o principal segmento da empresa?"
+              label="Qual é a principal atividade da empresa?"
               value={formData.companySegment}
               options={COMPANY_SEGMENT_OPTIONS}
               onChange={(value) => updateField("companySegment", value)}
@@ -2687,7 +2824,7 @@ export default function App() {
               />
               <SelectField
                 id="revenueRange"
-                label="Qual é o faturamento médio da empresa por ano?"
+                label="Qual é o faturamento da empresa por ano?"
                 value={formData.revenueRange}
                 options={REVENUE_OPTIONS}
                 onChange={(value) => updateField("revenueRange", value)}
@@ -2698,7 +2835,7 @@ export default function App() {
 
             <CheckboxCards
               id="salesChannels"
-              label="Por quais canais a empresa vende?"
+              label="Onde a empresa vende?"
               values={formData.salesChannels}
               options={SALES_CHANNEL_OPTIONS}
               onToggle={(value) =>
@@ -2708,7 +2845,7 @@ export default function App() {
                 )
               }
               columns="two"
-              helper="Marque todos os canais usados."
+              helper="Marque todas as opções que servem para a empresa."
               required
               error={hasError("salesChannels")}
             />
@@ -2727,67 +2864,82 @@ export default function App() {
           </div>
         );
 
-      case "sebrae-relationship": {
-        const hasOnline = ["online", "ambos"].includes(formData.courseContact);
-        const hasPresencial = ["presencial", "ambos"].includes(formData.courseContact);
+      case "sebrae-relationship":
         return (
           <div className="space-y-8">
             <ChoiceCards
               id="courseContact"
-              label="Você já fez ou acessou algum curso do Sebrae?"
+              label={`${firstName || "Você"}, você já fez algum curso do Sebrae?`}
               value={formData.courseContact}
               options={COURSE_CONTACT_OPTIONS}
-              onChange={(value) => updateField("courseContact", value)}
+              onChange={updateCourseExperience}
               columns="two"
               required
               error={hasError("courseContact")}
             />
 
-            {hasOnline ? (
-              <>
-                {renderCourseCards()}
-                {formData.onlineCourses.includes("outro") ? (
-                  <TextField
-                    id="onlineCourseOther"
-                    label="Qual foi o outro curso online?"
-                    value={formData.onlineCourseOther}
-                    onChange={(value) => updateField("onlineCourseOther", value)}
-                    placeholder="Digite o nome do curso"
-                    required
-                    error={hasError("onlineCourseOther")}
-                  />
-                ) : null}
-              </>
+            {hasCourse ? (
+              <CheckboxCards
+                id="courseFormats"
+                label="Como você fez o curso ou os cursos?"
+                values={formData.courseFormats}
+                options={COURSE_FORMAT_OPTIONS}
+                onToggle={toggleCourseFormat}
+                columns="two"
+                helper="Marque online, presencial ou os dois."
+                required
+                error={hasError("courseFormats")}
+              />
             ) : null}
 
-            {hasPresencial ? (
+            {hasCourse && hasOnlineCourseContact ? renderCourseCards() : null}
+
+            {hasCourse && hasPresencialCourseContact ? (
               <TextField
                 id="presencialCourse"
-                label="Qual curso presencial você fez ou acessou?"
+                label="Qual foi o curso presencial?"
                 value={formData.presencialCourse}
                 onChange={(value) => updateField("presencialCourse", value)}
                 placeholder="Digite o nome do curso"
+                helper="Se fez mais de um, separe os nomes por vírgula."
                 required
                 error={hasError("presencialCourse")}
               />
             ) : null}
 
             {formData.courseContact === "nenhum" ? (
-              <InfoBanner icon={Star} title="Você verá menos perguntas">
-                Como você ainda não teve contato com cursos do Sebrae, vamos pular as perguntas sobre
-                avaliação e uso dos cursos.
+              <InfoBanner
+                icon={CheckCircle2}
+                title={firstName ? `Tudo certo, ${firstName}.` : "Tudo certo."}
+              >
+                Como você ainda não fez um curso do Sebrae, vamos seguir para a revisão.
               </InfoBanner>
             ) : null}
           </div>
         );
-      }
 
       case "course-evaluation":
         return (
           <div className="space-y-8">
+            <section className="rounded-2xl border border-[#D8E0F0] bg-[#F7F9FF] p-5">
+              <p className="text-sm font-bold text-[#071D49]">Cursos que você informou</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {selectedCourseNames.map((courseName) => (
+                  <span
+                    key={courseName}
+                    className="rounded-full border border-[#B9C8F2] bg-white px-3 py-1.5 text-sm font-semibold text-[#1F3FB4]"
+                  >
+                    {courseName}
+                  </span>
+                ))}
+              </div>
+            </section>
+
             <CheckboxCards
               id="courseReasons"
-              label="Por que você buscou o curso ou os cursos?"
+              label={`${firstName || "Você"}, por que você buscou ${
+                selectedCourseNames.length === 1 ? "esse curso" : "esses cursos"
+              }?`}
               values={formData.courseReasons}
               options={COURSE_REASON_OPTIONS}
               onToggle={(value) =>
@@ -2869,25 +3021,28 @@ export default function App() {
 
       case "application-practice":
         return (
-          <div className="space-y-8">
-            <div className="space-y-4">
-              <InfoBanner tone="slate">
-                Leia cada frase e escolha uma opção de 1 a 7. Marque “Não se aplica à minha realidade” quando necessário.
-              </InfoBanner>
-              {APPLICATION_QUESTIONS.map((question, index) => (
-                <LikertQuestion
-                  key={question.id}
-                  id={question.id}
-                  question={question.text}
-                  number={index + 1}
-                  value={formData.responses[question.id]}
-                  scale={LIKERT_7_WITH_NA_SCALE}
-                  onChange={(value) => updateResponse(question.id, value)}
-                  error={hasError(question.id)}
-                />
-              ))}
-            </div>
+          <div className="space-y-4">
+            <InfoBanner tone="slate">
+              Leia cada frase e escolha uma opção de 1 a 7. Marque “Não se aplica à minha realidade” quando necessário.
+            </InfoBanner>
+            {APPLICATION_QUESTIONS.map((question, index) => (
+              <LikertQuestion
+                key={question.id}
+                id={question.id}
+                question={question.text}
+                number={index + 1}
+                value={formData.responses[question.id]}
+                scale={LIKERT_7_WITH_NA_SCALE}
+                onChange={(value) => updateResponse(question.id, value)}
+                error={hasError(question.id)}
+              />
+            ))}
+          </div>
+        );
 
+      case "application-changes":
+        return (
+          <div className="space-y-8">
             <CheckboxCards
               id="changesMade"
               label="O que mudou depois dos cursos?"
@@ -3081,43 +3236,33 @@ export default function App() {
       }
 
       case "review": {
-        const selectedCourseLabels = selectedSpecificCourses.map(
-          (courseId) => COURSES.find((course) => course.id === courseId)?.title || courseId,
-        );
-        if (formData.onlineCourses.includes("outro") && formData.onlineCourseOther) {
-          selectedCourseLabels.push(formData.onlineCourseOther);
-        }
-
         const summaryItems = [
           {
             label: "Respondente",
-            value: `${formData.fullName} · ${isPJ ? "Pessoa Jurídica" : "Pessoa Física"}`,
+            value: formData.fullName,
           },
           {
-            label: "Atuação",
-            value: getOptionLabel(PROFESSIONAL_AREA_OPTIONS, formData.professionalArea),
+            label: "Situação atual",
+            value: getOptionLabel(PROFESSIONAL_CATEGORY_OPTIONS, formData.professionalCategory),
           },
           {
             label: "Residência",
             value: `${formData.residenceCity} / ${formData.residenceState}`,
           },
           {
-            label: "Relação com o Sebrae",
+            label: "Já fez curso do Sebrae?",
             value: getOptionLabel(COURSE_CONTACT_OPTIONS, formData.courseContact),
           },
-          ...(hasOnlineCourseContact
+          ...(hasCourse
             ? [
                 {
-                  label: "Cursos online",
+                  label: "Cursos informados",
                   value:
-                    selectedCourseLabels.length > 0
-                      ? selectedCourseLabels.join(", ")
-                      : "Nenhum curso selecionado",
+                    selectedCourseNames.length > 0
+                      ? selectedCourseNames.join(", ")
+                      : "Nenhum curso informado",
                 },
               ]
-            : []),
-          ...(["presencial", "ambos"].includes(formData.courseContact)
-            ? [{ label: "Curso presencial", value: formData.presencialCourse }]
             : []),
         ];
 
@@ -3132,15 +3277,18 @@ export default function App() {
               ))}
             </div>
 
-            <InfoBanner icon={CheckCircle2} title="Você concluiu as perguntas necessárias">
-              O formulário mostrou apenas as partes ligadas ao seu perfil e aos cursos escolhidos.
+            <InfoBanner
+              icon={CheckCircle2}
+              title={firstName ? `Você chegou ao fim, ${firstName}.` : "Você chegou ao fim."}
+            >
+              Confira os dados principais antes de enviar.
             </InfoBanner>
 
             <label
               data-field="reviewConfirmed"
               className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition focus-within:ring-4 focus-within:ring-blue-100 ${
                 formData.reviewConfirmed
-                  ? "border-[#005AA5] bg-blue-50"
+                  ? "border-[#2F55D4] bg-blue-50"
                   : hasError("reviewConfirmed")
                     ? "border-red-400 bg-red-50"
                     : "border-slate-300 bg-white hover:border-blue-300"
@@ -3157,7 +3305,7 @@ export default function App() {
               <span
                 className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${
                   formData.reviewConfirmed
-                    ? "border-[#005AA5] bg-[#005AA5]"
+                    ? "border-[#2F55D4] bg-[#2F55D4]"
                     : "border-slate-400 bg-white"
                 }`}
                 aria-hidden="true"
@@ -3165,7 +3313,7 @@ export default function App() {
                 {formData.reviewConfirmed ? <span className="text-xs font-black leading-none text-white">✓</span> : null}
               </span>
               <span className="text-sm font-semibold leading-6 text-slate-800">
-                Li o resumo e quero enviar minhas respostas.
+                Conferi o resumo e quero enviar minhas respostas ao Sebrae.
               </span>
             </label>
             {hasError("reviewConfirmed") ? <FieldError /> : null}
@@ -3187,22 +3335,22 @@ export default function App() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-slate-50 px-4 py-10 font-sans text-slate-900">
+      <div className="min-h-screen bg-[#F5F7FC] px-4 py-10 font-sans text-[#071D49]">
         <main className="mx-auto flex min-h-[70vh] max-w-2xl items-center justify-center">
           <section className="w-full rounded-[32px] border border-slate-200 bg-white p-8 text-center shadow-xl sm:p-12">
             <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
               <CheckCircle2 size={44} aria-hidden="true" />
             </span>
             <h1 className="mt-7 text-3xl font-black tracking-tight text-slate-950">
-              Obrigado pela sua contribuição!
+              Tudo certo{firstName ? `, ${firstName}` : ""}!
             </h1>
             <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-slate-600">
-              Recebemos suas respostas. Elas vão ajudar o Sebrae a melhorar seus cursos e atendimentos.
+              Recebemos suas respostas. Elas vão ajudar o Sebrae a criar soluções mais úteis para quem empreende.
             </p>
             <button
               type="button"
               onClick={resetSurvey}
-              className="mt-8 inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-slate-300 px-6 py-3 text-sm font-bold text-slate-700 transition hover:border-[#005AA5] hover:text-[#005AA5] focus:outline-none focus:ring-4 focus:ring-blue-100"
+              className="mt-8 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 px-6 py-3 text-sm font-bold text-slate-700 transition hover:border-[#2F55D4] hover:text-[#2F55D4] focus:outline-none focus:ring-4 focus:ring-blue-100"
             >
               <span className="text-lg leading-none" aria-hidden="true">↻</span>
               Iniciar uma nova resposta
@@ -3215,113 +3363,111 @@ export default function App() {
 
   if (!started) {
     return (
-      <div className="min-h-screen bg-slate-950 font-sans text-white">
-        <main className="relative isolate overflow-hidden">
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_right,rgba(0,174,239,0.26),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(0,90,165,0.45),transparent_40%)]" />
-          <div className="mx-auto grid min-h-screen max-w-7xl items-center gap-12 px-5 py-12 lg:grid-cols-[1.1fr_0.9fr] lg:px-10">
-            <section>
-              <div className="inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[#005AA5]">
-                  <TrendingUp size={18} aria-hidden="true" />
-                </span>
-                Pesquisa Sebrae · 2026
-              </div>
+      <div className="min-h-screen bg-[#F5F7FC] font-sans text-[#071D49]">
+        <header className="border-b border-[#D8E0F0] bg-white">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 lg:px-10">
+            <img
+              src="https://sebrae.com.br/content/dam/portal-sebrae/na/pt/imagens/logo/logo-sebrae.svg"
+              alt="Sebrae"
+              className="h-8 w-auto sm:h-9"
+            />
+            <p className="hidden max-w-3xl text-right text-xs font-bold leading-5 text-[#2F55D4] md:block">
+              Mapeamento de Cadeias Produtivas, Vocações Regionais e Efetividade de Soluções do SEBRAE
+            </p>
+          </div>
+        </header>
 
-              <h1 className="mt-8 max-w-4xl text-4xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl">
-                Sua experiência ajuda o Sebrae a melhorar os cursos.
-              </h1>
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-                O formulário mostra apenas as perguntas que combinam com seu perfil e com os cursos
-                escolhidos.
-              </p>
+        <main className="mx-auto max-w-7xl px-5 py-8 lg:px-10 lg:py-12">
+          <section className="overflow-hidden rounded-[28px] bg-[#2F55D4] shadow-[0_24px_70px_rgba(32,63,180,0.18)]">
+            <div className="grid lg:grid-cols-[1.05fr_0.95fr]">
+              <div className="flex flex-col justify-center px-6 py-9 text-white sm:px-10 sm:py-12 lg:px-14 lg:py-16">
+                <p className="max-w-3xl text-xs font-black uppercase leading-5 tracking-[0.16em] text-[#DFFF7A] sm:text-sm">
+                  Mapeamento de Cadeias Produtivas, Vocações Regionais e Efetividade de Soluções do SEBRAE
+                </p>
+                <h1 className="mt-5 max-w-3xl text-3xl font-black leading-tight tracking-tight sm:text-4xl lg:text-5xl">
+                  Sua experiência pode melhorar o apoio a quem empreende.
+                </h1>
+                <p className="mt-5 max-w-2xl text-base leading-7 text-blue-50 sm:text-lg">
+                  Responda e ajude o Sebrae a entender as vocações da sua região e a criar soluções mais úteis para pequenos negócios.
+                </p>
 
-              <div className="mt-8 flex flex-wrap gap-3 text-sm font-semibold text-slate-200">
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2">
-                  <CheckCircle2 size={17} aria-hidden="true" />
-                  Perguntas conforme suas respostas
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2">
+                <div className="mt-7 inline-flex w-fit items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-sm font-bold text-white">
                   <Clock size={17} aria-hidden="true" />
-                  O tempo varia conforme os cursos
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2">
-                  <CheckCircle2 size={17} aria-hidden="true" />
-                  Rascunho salvo nesta aba
-                </span>
-              </div>
+                  Leva menos de 5 minutos
+                </div>
 
-              <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={startSurvey}
-                  className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-white px-7 py-4 text-base font-black text-[#005AA5] shadow-xl transition hover:-translate-y-0.5 hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-white/30"
-                >
-                  {hasDraft ? "Continuar preenchimento" : "Iniciar pesquisa"}
-                  <span className="text-xl leading-none" aria-hidden="true">→</span>
-                </button>
-                {hasDraft ? (
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                   <button
                     type="button"
-                    onClick={resetSurvey}
-                    className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full border border-white/20 px-7 py-4 text-base font-bold text-white transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-white/20"
+                    onClick={startSurvey}
+                    className="inline-flex min-h-14 items-center justify-center gap-2 rounded-xl bg-[#DFFF7A] px-7 py-4 text-base font-black text-[#17399F] shadow-lg transition hover:-translate-y-0.5 hover:bg-[#E7FF9B] focus:outline-none focus:ring-4 focus:ring-white/30"
                   >
-                    <span className="text-lg leading-none" aria-hidden="true">↻</span>
-                    Recomeçar
+                    {hasDraft ? "Continuar pesquisa" : "Começar agora"}
+                    <span className="text-xl leading-none" aria-hidden="true">→</span>
                   </button>
-                ) : null}
+                  {hasDraft ? (
+                    <button
+                      type="button"
+                      onClick={resetSurvey}
+                      className="inline-flex min-h-14 items-center justify-center rounded-xl border border-white/35 px-7 py-4 text-base font-bold text-white transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-white/20"
+                    >
+                      Recomeçar
+                    </button>
+                  ) : null}
+                </div>
               </div>
-            </section>
 
-            <section className="rounded-[32px] border border-white/10 bg-white p-6 text-slate-900 shadow-2xl sm:p-8">
-              <div className="flex items-center gap-3 border-b border-slate-200 pb-5">
+              <div className="relative min-h-72 lg:min-h-full">
                 <img
-                  src="https://sebrae.com.br/content/dam/portal-sebrae/na/pt/imagens/logo/logo-sebrae.svg"
-                  alt="Sebrae"
-                  className="h-9 w-auto"
+                  src={COVER_IMAGE_URL}
+                  alt="Pessoas empreendedoras conversando e trabalhando juntas"
+                  className="absolute inset-0 h-full w-full object-cover"
+                  loading="eager"
                 />
-                <div className="h-8 w-px bg-slate-200" />
-                <p className="text-xs font-bold uppercase leading-5 tracking-wide text-slate-500">
-                  Efetividade das soluções
-                </p>
+                <div className="absolute inset-0 bg-gradient-to-t from-[#17399F]/45 via-transparent to-transparent lg:bg-gradient-to-r lg:from-[#2F55D4]/35 lg:via-transparent lg:to-transparent" />
               </div>
+            </div>
+          </section>
 
-              <h2 className="mt-6 text-2xl font-black tracking-tight text-slate-950">
-                Como funciona
-              </h2>
-              <div className="mt-6 space-y-5">
+          <section className="mt-8 grid gap-4 lg:grid-cols-[1fr_0.72fr]">
+            <div className="rounded-[24px] border border-[#D8E0F0] bg-white p-6 sm:p-8">
+              <h2 className="text-xl font-black text-[#071D49]">Como funciona</h2>
+              <div className="mt-6 grid gap-5 sm:grid-cols-3">
                 {[
-                  {
-                    icon: Users,
-                    title: "Perfil",
-                    text: "Primeiro, você informa se atua como Pessoa Física ou Pessoa Jurídica.",
-                  },
-                  {
-                    icon: PlusCircle,
-                    title: "Cursos",
-                    text: "Depois, você marca os cursos online que fez ou acessou.",
-                  },
-                  {
-                    icon: Star,
-                    title: "Aplicação e resultados",
-                    text: "Por fim, você conta o que aplicou e quais resultados percebeu.",
-                  },
-                ].map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <div key={item.title} className="flex gap-4">
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#005AA5]">
-                        <Icon size={21} aria-hidden="true" />
-                      </span>
-                      <div>
-                        <h3 className="font-bold text-slate-900">{item.title}</h3>
-                        <p className="mt-1 text-sm leading-6 text-slate-600">{item.text}</p>
-                      </div>
-                    </div>
-                  );
-                })}
+                  "Diga quem é você",
+                  "Depois, diga quais cursos do Sebrae você fez",
+                  "Por fim, conte o que aplicou e quais resultados percebeu.",
+                ].map((text, index) => (
+                  <div key={text} className="flex gap-3 sm:block">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2F55D4] text-sm font-black text-white">
+                      {index + 1}
+                    </span>
+                    <p className="pt-1 text-sm font-semibold leading-6 text-slate-700 sm:mt-3 sm:pt-0">
+                      {text}
+                    </p>
+                  </div>
+                ))}
               </div>
-            </section>
-          </div>
+            </div>
+
+            <div className="rounded-[24px] border border-[#D8E0F0] bg-[#F0F4FF] p-6 sm:p-8">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-[#2F55D4] shadow-sm">
+                <CheckCircle2 size={23} aria-hidden="true" />
+              </div>
+              <h2 className="mt-5 text-xl font-black text-[#071D49]">Seus dados estão protegidos</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-700">
+                Seus dados serão protegidos pelo Sebrae e tratados conforme a LGPD.
+              </p>
+              <a
+                href={SEBRAE_LGPD_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-flex text-sm font-black text-[#2F55D4] underline decoration-blue-300 underline-offset-4 hover:text-[#1F3FB4]"
+              >
+                Conheça a proteção de dados do Sebrae
+              </a>
+            </div>
+          </section>
         </main>
       </div>
     );
@@ -3331,8 +3477,8 @@ export default function App() {
   const isFinalPage = currentPage.kind === "review";
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+    <div className="min-h-screen bg-[#F5F7FC] font-sans text-[#071D49]">
+      <header className="sticky top-0 z-40 border-b border-[#D8E0F0] bg-white/95 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6">
           <div className="flex items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3">
@@ -3342,24 +3488,23 @@ export default function App() {
                 className="h-7 w-auto shrink-0 sm:h-8"
               />
               <div className="hidden h-7 w-px bg-slate-200 sm:block" />
-              <p className="hidden truncate text-xs font-bold uppercase tracking-wide text-slate-500 md:block">
-                Pesquisa sobre cursos do Sebrae
+              <p className="hidden max-w-xl truncate text-xs font-bold text-slate-600 md:block">
+                Mapeamento de Cadeias Produtivas, Vocações Regionais e Efetividade de Soluções do SEBRAE
               </p>
             </div>
 
             <div className="flex shrink-0 items-center gap-3 text-xs text-slate-500">
-              <span className="hidden items-center gap-1.5 sm:inline-flex">
-                <Clock size={14} aria-hidden="true" />
-                {savedAt ? "Rascunho salvo" : "Salvando rascunho"}
-              </span>
-              <span className="rounded-full bg-slate-100 px-3 py-1.5 font-bold text-slate-700">
+              {firstName ? (
+                <span className="hidden font-bold text-[#1F3FB4] sm:inline">Olá, {firstName}</span>
+              ) : null}
+              <span className="rounded-full bg-[#F0F4FF] px-3 py-1.5 font-bold text-[#17399F]">
                 {currentPageIndex + 1} de {pages.length}
               </span>
             </div>
           </div>
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
             <div
-              className="h-full rounded-full bg-[#005AA5] transition-all duration-500"
+              className="h-full rounded-full bg-[#2F55D4] transition-all duration-500"
               style={{ width: `${progress}%` }}
               role="progressbar"
               aria-label="Progresso do questionário"
@@ -3372,9 +3517,9 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10">
-        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 bg-gradient-to-br from-blue-50 via-white to-slate-50 px-5 py-6 sm:px-8 sm:py-8">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#005AA5]">
+        <section className="overflow-hidden rounded-[24px] border border-[#D8E0F0] bg-white shadow-[0_16px_50px_rgba(30,54,120,0.08)]">
+          <div className="border-b border-[#D8E0F0] bg-[#F7F9FF] px-5 py-6 sm:px-8 sm:py-8">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#2F55D4]">
               {currentPage.eyebrow}
             </p>
             <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
@@ -3403,7 +3548,7 @@ export default function App() {
                 type="button"
                 onClick={goBack}
                 disabled={isSubmitting}
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-slate-300 px-4 py-3 text-sm font-bold text-slate-700 transition hover:border-[#005AA5] hover:text-[#005AA5] focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-50 sm:px-6"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-bold text-slate-700 transition hover:border-[#2F55D4] hover:text-[#2F55D4] focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-50 sm:px-6"
               >
                 <span className="text-lg leading-none" aria-hidden="true">←</span>
                 Voltar
@@ -3413,10 +3558,10 @@ export default function App() {
                 type="button"
                 onClick={goNext}
                 disabled={isSubmitting}
-                className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-black text-white shadow-lg transition focus:outline-none focus:ring-4 disabled:cursor-not-allowed disabled:opacity-60 sm:px-7 ${
+                className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-black text-white shadow-lg transition focus:outline-none focus:ring-4 disabled:cursor-not-allowed disabled:opacity-60 sm:px-7 ${
                   isFinalPage
                     ? "bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-100"
-                    : "bg-[#005AA5] hover:bg-[#004b8b] focus:ring-blue-100"
+                    : "bg-[#2F55D4] hover:bg-[#1F3FB4] focus:ring-blue-100"
                 }`}
               >
                 {isSubmitting ? (
@@ -3440,9 +3585,8 @@ export default function App() {
           </div>
         </section>
 
-        <p className="mt-5 text-center text-xs leading-5 text-slate-400">
-          Os campos com * são obrigatórios. O formulário mostra perguntas de acordo com suas
-          respostas.
+        <p className="mt-5 text-center text-xs leading-5 text-slate-500">
+          Os campos com * são obrigatórios. Seus dados são tratados pelo Sebrae conforme a LGPD.
         </p>
       </main>
     </div>
